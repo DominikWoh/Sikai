@@ -1,15 +1,36 @@
-# Sikai · सिकाइ — Nepali lernen
+<div align="center">
 
-Eine Lernreise von Kathmandu zum Everest Base Camp: 9 Kapitel Geschichte, Vokabeltrainer mit Devanagari + Umschrift, XP, Streak, Reise-Pass mit Stempeln. Für alle, die Nepali von null auf „kleines Gespräch“ lernen wollen — komplett auf Deutsch.
+# Sikai · सिकाइ
 
-**Live:** <https://dominikwoh.github.io/Sikai/>
+**Nepali lernen — als Reise von Kathmandu zum Everest Base Camp.**
+
+[![Live](https://img.shields.io/badge/Live-dominikwoh.github.io%2FSikai-D97757?style=flat-square)](https://dominikwoh.github.io/Sikai/)
+[![PWA](https://img.shields.io/badge/PWA-installierbar%20%C2%B7%20offline--first-BC5B3D?style=flat-square)](https://dominikwoh.github.io/Sikai/)
+[![Vanilla JS](https://img.shields.io/badge/Vanilla%20JS-0%20Dependencies-1F1E1B?style=flat-square)](#technik-kurzfassung)
+[![Inhalt](https://img.shields.io/badge/9%20Kapitel-162%20Vokabeln%20%C2%B7%20183%20Audios-3F5A34?style=flat-square)](#struktur)
+[![Selbsttest](https://img.shields.io/badge/Selbsttest-98%20Checks-6F9455?style=flat-square)](#technik-kurzfassung)
+
+<img src="docs/map.png" width="640" alt="Illustrierte Nepal-Karte mit der Lernreise: 9 Stationen von Kathmandu zum Everest Base Camp, Route mit Fortschritt, „Du bist hier“-Marker und erster Stempel">
+
+9 Kapitel Geschichte · Vokabeltrainer mit Devanagari + Umschrift · XP, Streak und Reise-Pass mit Stempeln — für alle, die Nepali von null auf „kleines Gespräch“ lernen wollen, komplett auf Deutsch.
+
+</div>
+
+---
 
 ## Als App installieren (funktioniert dann komplett offline)
 
 - **Android (Chrome):** Seite öffnen → Menü · · · → **„App installieren“** — oder direkt über die Schaltfläche in den App-Einstellungen.
 - **iPhone (Safari):** Teilen-Taste → **„Zum Startbildschirm hinzufügen“**.
 
-Beim ersten Öffnen speichert sich die gesamte App auf dem Gerät — alle Kapitel, Übungen und Audios. Danach funktioniert Sikai ohne jede Internetverbindung. Fortschritt (XP, Streak) liegt lokal im Browser des jeweiligen Geräts.
+Beim ersten Öffnen speichert sich die gesamte App auf dem Gerät — alle Kapitel, Übungen und Audios (~3 MB). Danach funktioniert Sikai ohne jede Internetverbindung. Fortschritt (XP, Streak) liegt lokal im Browser des jeweiligen Geräts.
+
+## Was drin ist
+
+- **Die Reise:** 9 Stationen von Kathmandu über Nagarkot, Pokhara, Lumbini und Chitwan bis zum Everest Base Camp — jede mit eigener Geschichte, Szenen und Entscheidungen.
+- **Vokabeltrainer:** 162 Wörter & Sätze mit Devanagari, Umschrift und Aussprache-Audio; Auffrischen per Spaced Repetition.
+- **Motivation:** Tagesziel (1 neue Szene + 1 Wiederholung), Streak, XP, Reise-Pass mit Stempeln, tägliche Challenge.
+- **Extras:** Devanagari-Buchstabenkurs, Hördiktat („Detektiv“), Hören-Multiple-Choice, Satz-Bau.
 
 ## Lokal starten
 
@@ -22,7 +43,7 @@ python -m http.server 8765
 
 ## Technik (Kurzfassung)
 
-- Vanille HTML/CSS/JS, keine Abhängigkeiten, keine externen Anfragen (Fonts lokal eingebettet).
+- Vanille HTML/CSS/JS, keine Abhängigkeiten, keine externen Anfragen (Fonts lokal eingebettet). Regulärer Selbsttest mit 98 Checks (`?demo=selftest`).
 - `sw.js` (Service Worker) precacht alle ~230 Dateien inkl. der 183 Audio-Dateien; er wird per Skript aus dem Dateibaum generiert und trägt einen Inhalts-Hash als Build-Kennung. Bei Inhaltsänderungen wird er neu generiert — installierte Apps laden die neue Version dann automatisch nach (Update-Banner).
 - Manifest + Icons für Android/iOS; relative Pfade, damit alles auch unter einem GitHub-Pages-Unterpfad läuft.
 
