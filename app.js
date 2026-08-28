@@ -1204,26 +1204,19 @@ function mapHtml() {
       <g class="lm ${done || next ? "" : "locked"}"><title>${esc(tip)}</title>${landmarkFor(st.id, x, y)}</g>
       <circle cx="${x}" cy="${y}" r="8.5" class="stop-node ${done ? "done" : ""} ${next ? "next" : "locked"}"><title>${esc(tip)}</title></circle>
       <text x="${x}" y="${y + 3.6}" class="map-num ${done ? "done" : ""} ${next ? "next" : ""}">${i + 1}</text>
-      ${next ? `
-      <line x1="${x}" y1="${y - 9}" x2="${x}" y2="${y - 24}" class="here-stem"/>
-      <g transform="translate(${x},${y - 34})">
-        <rect x="-38.6" y="-10.4" width="77.2" height="20.8" rx="10.4" class="here-casing"/>
-        <rect x="-38" y="-9.8" width="76" height="19.6" rx="9.8" class="here-pill"/>
-        <text x="0" y="3.7" class="map-here">Du bist hier</text>
-      </g>` : ""}
     `;
   }).join("");
 
   return `
     <div class="map-hero">
-      <svg viewBox="0 0 440 300" role="img" aria-label="Illustrierte Nepal-Karte mit deiner Lernreise von Kathmandu zum Everest Base Camp">
+      <svg viewBox="15 0 404 300" role="img" aria-label="Illustrierte Nepal-Karte mit deiner Lernreise von Kathmandu zum Everest Base Camp">
         <defs>
           <clipPath id="npl">${`<path d="${land}"/>`}</clipPath>
           <pattern id="landdots" width="26" height="26" patternUnits="userSpaceOnUse">
             <circle cx="2" cy="2" r="1" fill="var(--map-land-line)"/>
           </pattern>
         </defs>
-        <rect width="440" height="300" rx="14" class="map-sky"/>
+        <rect x="15" width="404" height="300" rx="14" class="map-sky"/>
         <g class="sun" transform="translate(40,46)">
           <circle r="11.5" class="sun-body"/>
           ${[0,45,90,135,180,225,270,315].map(a => `<line x1="0" y1="-15" x2="0" y2="-21" transform="rotate(${a})" class="sun-ray"/>`).join("")}
@@ -2805,7 +2798,7 @@ initPwa();
         check("start-zeigt-karte-und-stationen-vorab", !!document.querySelector(".map-hero"));
         check("reset-keine-station-erreicht", document.querySelectorAll(".stop.done").length === 0);
         check("reset-genau-eine-aktiv", document.querySelectorAll(".stop.next").length === 1);
-        check("reset-genau-ein-du-bist-hier", document.querySelectorAll(".map-here").length === 1);
+        check("reset-genau-ein-du-bist-hier", document.querySelectorAll(".pulse-ring").length === 1);
         check("reset-thamel-gesperrt", (function () {
           const rows = [...document.querySelectorAll(".stop")];
           return rows[1] && rows[1].classList.contains("locked");
