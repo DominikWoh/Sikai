@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#F6F3EB" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#201F1B" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Sikai">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="assets/icons/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<title>Sikai · Nepali lernen</title>
+<script>
+  // Theme vor dem ersten Farb-Render setzen (kein Aufblitzen)
+  try {
+    var t = new URLSearchParams(location.search).get("theme");
+    if (t !== "dark" && t !== "light") t = JSON.parse(localStorage.getItem("sikai_theme"));
+    if (!t) t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    document.documentElement.dataset.theme = t;
+  } catch (e) { document.documentElement.dataset.theme = "light"; }
+</script>
+<link rel="stylesheet" href="styles.css?v=19">
+</head>
+<body class="script-both">
+  <header class="app-header">
+    <div class="wordmark">
+      <span class="wordmark-dev">सिकाइ</span>
+      <span class="wordmark-lat">Sikai<span class="wordmark-dot">.</span></span>
+    </div>
+    <div class="header-stats">
+      <span class="pill" id="xpPill" title="Gesammelte XP"></span>
+      <span class="pill" id="streakPill" title="Lern-Streak in Tagen"></span>
+      <button class="icon-btn" id="themeBtn" title="Hell/Dunkel umschalten" aria-label="Farbschema umschalten"></button>
+      <nav class="script-toggle" id="scriptToggle" aria-label="Schrift-Anzeige">
+        <button data-script="dev">देवनागरी</button>
+        <button data-script="both" class="active">Beide</button>
+        <button data-script="tr">Umschrift</button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="view" class="view"></main>
+
+  <nav class="tabbar" id="tabbar" aria-label="Hauptnavigation"></nav>
+
+  <audio id="player" preload="auto"></audio>
+
+  <script src="data/lesson1.js?v=19"></script>
+  <script src="data/journey.js?v=19"></script>
+  <script src="app.js?v=19"></script>
+</body>
+</html>
