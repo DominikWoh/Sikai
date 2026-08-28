@@ -127,6 +127,7 @@ const ICONS = {
   mountain_snow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 3 4 8 5-5 5 15H2L8 3z" /> <path d="M4.14 15.08c2.62-1.57 5.24-1.43 7.86.42 2.74 1.94 5.49 2 8.23.19" /></svg>',
   smartphone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="20" x="5" y="2" rx="2" ry="2" /> <path d="M12 18h.01" /></svg>',
   wifi_off: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h.01" /> <path d="M8.5 16.429a5 5 0 0 1 7 0" /> <path d="M5 12.859a10 10 0 0 1 5.17-2.69" /> <path d="M19 12.859a10 10 0 0 1-2.007-1.523" /> <path d="M2 8.82a15 15 0 0 1 4.177-2.643" /> <path d="M22 8.82a15 15 0 0 0-11.288-3.764" /> <path d="m2 2 20 20" /></svg>',
+  maximize: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3" /> <path d="M21 8V5a2 2 0 0 0-2-2h-3" /> <path d="M3 16v3a2 2 0 0 0 2 2h3" /> <path d="M16 21h3a2 2 0 0 0 2-2v-3" /></svg>',
   flag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528" /></svg>'
 };
 
@@ -1196,7 +1197,7 @@ function mapHtml() {
     const next = !done && (i === 0 || stopDone(stops[i - 1], xp));
     const tip = `${i + 1} · ${st.name} · ${st.sub}${done ? " · erreicht" : " · " + st.xp + " XP"}`;
     return `
-      ${next ? `<circle cx="${x}" cy="${y}" r="15" class="pulse-ring"/>` : ""}
+      ${next ? `<circle cx="${x}" cy="${y}" r="17" class="pulse-ring"/>` : ""}
       <ellipse cx="${x}" cy="${y + 10}" rx="5.5" ry="1.7" class="pin-shadow"/>
       <circle cx="${x}" cy="${y}" r="10.8" class="pin-halo"/>
       ${i === stops.length - 1 ? `<circle cx="${x}" cy="${y}" r="11.6" class="pin-goal"/>` : ""}
@@ -1204,11 +1205,11 @@ function mapHtml() {
       <circle cx="${x}" cy="${y}" r="8.5" class="stop-node ${done ? "done" : ""} ${next ? "next" : "locked"}"><title>${esc(tip)}</title></circle>
       <text x="${x}" y="${y + 3.6}" class="map-num ${done ? "done" : ""} ${next ? "next" : ""}">${i + 1}</text>
       ${next ? `
-      <line x1="${x}" y1="${y - 9}" x2="${x}" y2="${y - 19}" class="here-stem"/>
-      <g transform="translate(${x},${y - 30})">
-        <rect x="-30.6" y="-8.6" width="61.2" height="16.3" rx="8.15" class="here-casing"/>
-        <rect x="-30" y="-8" width="60" height="15.5" rx="7.75" class="here-pill"/>
-        <text x="0" y="3.1" class="map-here">Du bist hier</text>
+      <line x1="${x}" y1="${y - 9}" x2="${x}" y2="${y - 24}" class="here-stem"/>
+      <g transform="translate(${x},${y - 34})">
+        <rect x="-38.6" y="-10.4" width="77.2" height="20.8" rx="10.4" class="here-casing"/>
+        <rect x="-38" y="-9.8" width="76" height="19.6" rx="9.8" class="here-pill"/>
+        <text x="0" y="3.7" class="map-here">Du bist hier</text>
       </g>` : ""}
     `;
   }).join("");
@@ -1407,8 +1408,80 @@ function mapHtml() {
           <path d="M 0 6.4 L 15 10 L 0 13.6 Z" fill="#C05B3C" stroke="#3E5A76" stroke-width="0.7"/>
         </g>
       </svg>
+      <button class="map-zoom" aria-label="Karte vergrößern">${ICONS.maximize}</button>
       <div class="map-caption">Kathmandu → Everest Base Camp · Stationen 1–9</div>
     </div>`;
+}
+
+/* Karte antippen: Vollbild mit Pinch-Zoom und Schieben */
+function openMapOverlay() {
+  const src = $(".map-hero svg");
+  if (!src || $("#mapOverlay")) return;
+  const ov = document.createElement("div");
+  ov.id = "mapOverlay";
+  ov.setAttribute("role", "dialog");
+  ov.setAttribute("aria-label", "Nepal-Karte, vergrößert");
+  ov.innerHTML = `<div class="mo-stage">${src.outerHTML}</div>
+    <button class="mo-close" aria-label="Karte schließen">${ICONS.close}</button>
+    <div class="mo-hint">Zwei Finger: zoomen · ein Finger: schieben</div>`;
+  document.body.appendChild(ov);
+  requestAnimationFrame(() => ov.classList.add("show"));
+
+  const stage = $(".mo-stage", ov);
+  let scale = 1, tx = 0, ty = 0;
+  const apply = () => { stage.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`; };
+  const ptrs = new Map();
+  let start = null;
+
+  stage.addEventListener("pointerdown", (e) => {
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    start = { scale, tx, ty, pts: new Map(ptrs) };
+  });
+  stage.addEventListener("pointermove", (e) => {
+    if (!ptrs.has(e.pointerId) || !start) return;
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (ptrs.size === 1) {
+      const [p] = ptrs.values();
+      const [s] = start.pts.values();
+      tx = start.tx + (p.x - s.x);
+      ty = start.ty + (p.y - s.y);
+    } else if (ptrs.size >= 2) {
+      const [a, b] = ptrs.values();
+      const [sa, sb] = start.pts.values();
+      const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+      const sdist = Math.hypot(sa.x - sb.x, sa.y - sb.y) || 1;
+      scale = Math.min(6, Math.max(1, start.scale * (dist / sdist)));
+      if (scale === 1) { tx = 0; ty = 0; }
+    }
+    apply();
+  });
+  const lift = (e) => {
+    ptrs.delete(e.pointerId);
+    if (!ptrs.size) {
+      start = null;
+      if (scale === 1 && (tx || ty)) { tx = 0; ty = 0; apply(); } // sanft zurueck auf Anfang
+    } else {
+      start = { scale, tx, ty, pts: new Map(ptrs) };
+    }
+  };
+  stage.addEventListener("pointerup", lift);
+  stage.addEventListener("pointercancel", lift);
+  ov.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    scale = Math.min(6, Math.max(1, scale * (e.deltaY < 0 ? 1.15 : 0.87)));
+    if (scale === 1) { tx = 0; ty = 0; }
+    apply();
+  }, { passive: false });
+
+  const close = () => {
+    ov.classList.remove("show");
+    document.removeEventListener("keydown", onKey);
+    setTimeout(() => ov.remove(), 260);
+  };
+  const onKey = (e) => { if (e.key === "Escape") close(); };
+  document.addEventListener("keydown", onKey);
+  $(".mo-close", ov).addEventListener("click", close);
+  ov.addEventListener("click", (e) => { if (e.target === ov) close(); });
 }
 
 function landmarkFor(id, x, y) {
@@ -1694,6 +1767,8 @@ function renderHome() {
 
   renderTabbar();
   if (state.tab === "einstellungen") { wireSettings($(".settings-page", view), () => {}); refreshPwaCards(); }
+  const mapHero = $(".map-hero", view);
+  if (mapHero) mapHero.addEventListener("click", () => openMapOverlay());
   $("#ctaBtn") && $("#ctaBtn").addEventListener("click", () => startSessionById(rec.id));
   const sCta = $("#storyCta");
   if (sCta) sCta.addEventListener("click", () => {
