@@ -1,6 +1,8 @@
 /* Sikai – Lern-Engine v2 (Gamification: Reise, XP, Streak, SRS, Story) */
 "use strict";
 
+const APP_VERSION = "22";
+
 const $ = (sel, root = document) => root.querySelector(sel);
 const view = $("#view");
 const player = $("#player");
@@ -420,6 +422,8 @@ function initPwa() {
         if (w.state === "installed" && navigator.serviceWorker.controller) showUpdateBar(w);
       });
     });
+    // Update wurde evtl. gefunden, bevor unser Lauscher hing: wartenden Worker direkt melden
+    if (reg.waiting && navigator.serviceWorker.controller) showUpdateBar(reg.waiting);
     navigator.serviceWorker.controller && reg.active && setTimeout(askSwStatus, 300);
     // Installierte App im Hintergrund prueft sonst nie auf Updates (Browser nur bei Navigation)
     setInterval(() => reg.update().catch(() => {}), 3600e3);
@@ -560,7 +564,7 @@ function settingsHtml() {
     <button class="btn btn-danger btn-sm" id="resetAllBtn">Alles löschen</button>
   </div>
   <p class="set-protect">Beide Resets fragen zweimal nach – nichts kann aus Versehen verschwinden.</p>
-  <p class="set-note">Läuft komplett lokal – alle Daten liegen nur in diesem Browser.</p>`;
+  <p class="set-note">Läuft komplett lokal – alle Daten liegen nur in diesem Browser · Version ${APP_VERSION}</p>`;
 }
 
 function armReset(btn, armedText, fn) {
