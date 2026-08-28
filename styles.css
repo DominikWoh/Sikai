@@ -1605,3 +1605,26 @@ body { overflow-x: hidden; }
   text-align: center; font-size: 12px; color: #EFEBE0;
   opacity: .82; pointer-events: none;
 }
+
+/* ---------- Install-Hinweis beim ersten Oeffnen ---------- */
+
+#installBar {
+  position: fixed; left: 0; right: 0; bottom: calc(62px + env(safe-area-inset-bottom, 0px) + 10px);
+  z-index: 89; display: flex; align-items: center; gap: 10px;
+  max-width: 520px; margin: 0 auto; padding: 10px 10px 10px 16px;
+  background: var(--card); border: 1.5px solid var(--line-strong); border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(31, 30, 27, .16);
+  font-size: 13.5px; color: var(--ink);
+  opacity: 0; transform: translateY(14px); pointer-events: none;
+  transition: opacity .3s ease, transform .3s ease;
+}
+#installBar.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+#installBar span { flex: 1; }
+#installBar #installGo svg { width: 15px; height: 15px; margin-right: 6px; vertical-align: -2px; }
+.ib-close {
+  flex: none; width: 30px; height: 30px; border-radius: 999px; border: none;
+  background: transparent; color: var(--ink-faint); cursor: pointer;
+  display: grid; place-items: center;
+}
+.ib-close:hover { background: var(--bg-soft); color: var(--ink); }
+.ib-close svg { width: 15px; height: 15px; }

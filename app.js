@@ -1,7 +1,7 @@
 /* Sikai – Lern-Engine v2 (Gamification: Reise, XP, Streak, SRS, Story) */
 "use strict";
 
-const APP_VERSION = "22";
+const APP_VERSION = "23";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const view = $("#view");
@@ -389,8 +389,15 @@ function initPwa() {
     e.preventDefault();
     pwa.prompt = e;
     refreshPwaCards();
+    const go = $("#installGo");
+    if (go) go.hidden = false; // Banner ist offen, Button jetzt aktivierbar
   });
-  window.addEventListener("appinstalled", () => { pwa.prompt = null; refreshPwaCards(); });
+  window.addEventListener("appinstalled", () => {
+    pwa.prompt = null;
+    store.set("sikai_install_hint_done", true);
+    hideInstallHint(false);
+    refreshPwaCards();
+  });
 
   document.addEventListener("click", async (e) => {
     const btn = e.target.closest("[data-install]");
@@ -432,10 +439,58 @@ function initPwa() {
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (pwaReloadArmed) location.reload();
   });
+
+  maybeShowInstallHint();
 }
 
 function askSwStatus() {
   navigator.serviceWorker.controller && navigator.serviceWorker.controller.postMessage({ type: "sikai-get-status" });
+}
+
+/* Install-Hinweis beim ersten Oeffnen (nicht in App, nicht nach Wegklicken, nicht in Demo-Ansichten) */
+function maybeShowInstallHint() {
+  if (!pwa.supported || isStandaloneApp()) return;
+  if (store.get("sikai_install_hint_done", false)) return;
+  if (new URLSearchParams(location.search).get("demo")) return;
+  setTimeout(() => {
+    if ($("#updateBar") || $("#installBar")) return;
+    if (isStandaloneApp() || store.get("sikai_install_hint_done", false)) return;
+    showInstallHint();
+  }, 1600);
+}
+
+function showInstallHint() {
+  const bar = document.createElement("div");
+  bar.id = "installBar";
+  const ios = isIos();
+  bar.innerHTML = `
+    <span>${ios
+      ? "Sikai als App: in Safari die Teilen-Taste antippen, dann „Zum Startbildschirm hinzufügen“."
+      : "Sikai als App installieren – ohne Browser-Leiste, komplett offline nutzbar."}</span>
+    ${ios ? "" : `<button class="btn btn-primary btn-sm" id="installGo" ${pwa.prompt ? "" : "hidden"}>${ICONS.smartphone} Installieren</button>`}
+    <button class="ib-close" id="installClose" aria-label="Hinweis schließen">${ICONS.close}</button>`;
+  document.body.appendChild(bar);
+  const revealBar = () => bar.classList.add("show");
+  requestAnimationFrame(revealBar);
+  setTimeout(revealBar, 350); // Fallback, falls rAF im Hintergrund-Pane pausiert
+  $("#installClose", bar).addEventListener("click", () => hideInstallHint(true));
+  const go = $("#installGo", bar);
+  if (go) go.addEventListener("click", async () => {
+    if (!pwa.prompt) return;
+    pwa.prompt.prompt();
+    await pwa.prompt.userChoice.catch(() => ({}));
+    pwa.prompt = null;
+    hideInstallHint(true);
+    refreshPwaCards();
+  });
+}
+
+function hideInstallHint(save) {
+  const bar = $("#installBar");
+  if (!bar) return;
+  bar.classList.remove("show");
+  if (save) store.set("sikai_install_hint_done", true);
+  setTimeout(() => bar.remove(), 300);
 }
 
 function showUpdateBar(worker) {
@@ -445,9 +500,11 @@ function showUpdateBar(worker) {
     bar.id = "updateBar";
     document.body.appendChild(bar);
   }
+  const revealUpdate = () => bar.classList.add("show");
   bar.innerHTML = `<span>Neue Version bereit – frisch geladene Inhalte & Audios.</span>
     <button class="btn btn-primary btn-sm" id="updateReload">Jetzt laden</button>`;
-  bar.classList.add("show");
+  requestAnimationFrame(revealUpdate);
+  setTimeout(revealUpdate, 350); // Fallback, falls rAF im Hintergrund-Pane pausiert
   $("#updateReload").addEventListener("click", () => {
     pwaReloadArmed = true;
     $("#updateBar").classList.remove("show");
@@ -1422,7 +1479,9 @@ function openMapOverlay() {
     <button class="mo-close" aria-label="Karte schließen">${ICONS.close}</button>
     <div class="mo-hint">Zwei Finger: zoomen · ein Finger: schieben</div>`;
   document.body.appendChild(ov);
-  requestAnimationFrame(() => ov.classList.add("show"));
+  const revealOv = () => ov.classList.add("show");
+  requestAnimationFrame(revealOv);
+  setTimeout(revealOv, 350); // Fallback, falls rAF im Hintergrund-Pane pausiert
 
   const stage = $(".mo-stage", ov);
   let scale = 1, tx = 0, ty = 0;
