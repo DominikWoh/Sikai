@@ -15,10 +15,6 @@
 [![Inhalt](https://img.shields.io/badge/9%20Kapitel-162%20Vokabeln%20%C2%B7%20183%20Audios-3F5A34?style=flat-square)](#struktur)
 [![Selbsttest](https://img.shields.io/badge/Selbsttest-98%20Checks-6F9455?style=flat-square)](#technik-kurzfassung)
 
-<img src="docs/app.png" width="330" alt="Sikai-Lernsession auf dem Handy: Übersetzungsübung „तपाईंलाई कस्तो छ?“ mit vier Antwortkarten und sofortigem Feedback">
-
-*Live drin: Übersetzen mit Devanagari + Umschrift, Aussprache-Audio, sofortiges Feedback.*
-
 <img src="docs/map.png" width="640" alt="Illustrierte Nepal-Karte mit der Lernreise: 9 Stationen von Kathmandu zum Everest Base Camp, Route mit Fortschritt">
 
 9 Kapitel Geschichte · Vokabeltrainer mit Devanagari + Umschrift · XP, Streak und Reise-Pass mit Stempeln — für alle, die Nepali von null auf „kleines Gespräch“ lernen wollen, komplett auf Deutsch.
@@ -40,6 +36,11 @@ Beim ersten Öffnen speichert sich die gesamte App auf dem Gerät — alle Kapit
 - **Vokabeltrainer:** 162 Wörter & Sätze mit Devanagari, Umschrift und Aussprache-Audio; Auffrischen per Spaced Repetition.
 - **Motivation:** Tagesziel (1 neue Szene + 1 Wiederholung), Streak, XP, Reise-Pass mit Stempeln, tägliche Challenge.
 - **Extras:** Devanagari-Buchstabenkurs, Hördiktat („Detektiv“), Hören-Multiple-Choice, Satz-Bau.
+
+<p align="center">
+  <img src="docs/app.png" width="330" alt="Sikai-Lernsession auf dem Handy: Übersetzungsübung „तपाईंलाई कस्तो छ?“ mit vier Antwortkarten und sofortigem Feedback">
+  <br><em>Live drin: Übersetzen mit Devanagari + Umschrift, Aussprache-Audio, sofortiges Feedback.</em>
+</p>
 
 ## Lokal starten
 
