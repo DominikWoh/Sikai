@@ -1,7 +1,7 @@
 /* Sikai – Lern-Engine v2 (Gamification: Reise, XP, Streak, SRS, Story) */
 "use strict";
 
-const APP_VERSION = "26";
+const APP_VERSION = "27";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const view = $("#view");
@@ -195,6 +195,16 @@ const ICONS = {
   search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34" /> <circle cx="11" cy="11" r="8" /></svg>',
   car: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" /> <circle cx="7" cy="17" r="2" /> <path d="M9 17h6" /> <circle cx="17" cy="17" r="2" /></svg>',
   sparkles: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" /> <path d="M20 2v4" /> <path d="M22 4h-4" /> <circle cx="4" cy="20" r="2" /></svg>',
+  layers: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z" /><path d="m6.08 10.37-3.5 1.59a1 1 0 0 0 0 1.81l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9a1 1 0 0 0 0-1.83l-3.5-1.59" /><path d="m6.08 15.87-3.5 1.59a1 1 0 0 0 0 1.81l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9a1 1 0 0 0 0-1.83l-3.5-1.59" /></svg>',
+  users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>',
+  heart_pulse: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27" /></svg>',
+  briefcase: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="14" x="2" y="7" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>',
+  utensils: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" /><path d="M7 2v20" /><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" /></svg>',
+  history: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l4 2" /></svg>',
+  plane: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" /></svg>',
+  palette: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>',
+  calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4" /><path d="M16 2v4" /><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M3 10h18" /></svg>',
   calendar_check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v3" /> <path d="M16 2v3" /> <rect x="3" y="3" width="18" height="18" rx="2" /> <path d="M3 9h18" /> <path d="m9 15 2 2 4-4" /></svg>',
   target: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /> <circle cx="12" cy="12" r="6" /> <circle cx="12" cy="12" r="2" /></svg>',
   _unused_compare: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3 4 7l4 4" /> <path d="M4 7h16" /> <path d="m16 21 4-4-4-4" /> <path d="M20 17H4" /></svg>',
@@ -1704,6 +1714,7 @@ function stopXp(id) {
 }
 function groupLocked(g) {
   if (g.storyOnly) return true; // Kapitel-Woerter kommen mit der Geschichte
+  if (g.theme) return themeLocked(); // Themen-Pakete: gemeinsam frei ab halber Story
   if (!g.unlock) return false;
   const st = JOURNEY.stops.find(x => x.id === g.unlock);
   return !st || !stopDone(st, getXp()); // Gruppe frei, wenn die Station (= Kapitel) erreicht ist
@@ -1752,7 +1763,7 @@ function sessionCardsHtml() {
     g5: "star", g6: "sparkles", g7: "car", g8: "mountain_snow", g9: "flag", g10: "target", g11: "speech", g21: "heart_handshake" };
   const cards = [];
   LESSONS[0].groups.forEach(g => {
-    if (g.storyOnly) return; // lebt in den Kapitel-Szenen
+    if (g.storyOnly || g.theme) return; // Kapitel-Woerter leben in den Szenen, Themen im Themen-Tab
     const doneN = groupDoneCount(g.id);
     const locked = groupLocked(g);
     const stop = g.unlock ? JOURNEY.stops.find(x => x.id === g.unlock) : null;
@@ -1846,10 +1857,26 @@ function todayCardHtml() {
 
 const TABS = [
   { id: "start", label: "tab-start" },
+  { id: "themen", label: "tab-themen" },
   { id: "ueben", label: "tab-ueben" },
   { id: "einstellungen", label: "tab-settings" }
 ];
-const TAB_ICONS = { start: "home", ueben: "refresh", einstellungen: "settings" };
+const TAB_ICONS = { start: "home", themen: "layers", ueben: "refresh", einstellungen: "settings" };
+
+/* Themen-Pakete: thematische Vokabel-Gruppen neben der Reise – gemeinsam hinter dem Story-Gate */
+function themeGroups() {
+  return LESSONS[0].groups.filter(g => g.theme).sort((a, b) => (a.themeOrder || 99) - (b.themeOrder || 99));
+}
+function themeProgress(g) {
+  const srs = srsAll();
+  const seen = g.items.filter(it => srs[it.id]).length;
+  return { seen, total: g.items.length, complete: seen === g.items.length };
+}
+function storyScenes() { return chapterList().reduce((a, c) => a.concat(c.scenes), []); }
+function storyDoneCount() { return storyScenes().filter(sc => store.get("sikai_done_" + sc.id, 0) > 0).length; }
+function themenGateNeed() { return Math.ceil(storyScenes().length / 2); } // 16 von 31 Szenen
+function themenUnlocked() { return storyDoneCount() >= themenGateNeed(); }
+function themeLocked() { return !themenUnlocked(); }
 
 function renderTabbar() {
   const bar = $("#tabbar");
@@ -1879,6 +1906,50 @@ function renderHome() {
 
   if (state.tab === "einstellungen") {
     view.innerHTML = `<div class="settings-sheet settings-page">${settingsHtml()}</div>`;
+  } else if (state.tab === "themen") {
+    const themes = themeGroups();
+    const words = themes.reduce((n, g) => n + g.items.length, 0);
+    const srs = srsAll();
+    const seenAll = themes.reduce((n, g) => n + g.items.filter(it => srs[it.id]).length, 0);
+    const locked = themeLocked();
+    const doneN = storyDoneCount(), needN = themenGateNeed(), totalN = storyScenes().length;
+    /* Empfehlung: erstes unvollständiges Paket, sonst das am längsten fällige */
+    const nextTheme = themes.find(g => !themeProgress(g).complete) || themes[0];
+    const nextIsReview = themes.every(g => themeProgress(g).complete);
+    view.innerHTML = `
+      <div class="kicker-row"><span class="kicker">${t("tab-themen")}</span><span class="kicker-meta">${t("themen-meta", { n: themes.length, w: words })}</span></div>
+      ${locked ? "" : `
+      <div class="cta-row"><button class="btn btn-primary cta" id="themenCta">${ICONS.play} ${esc(nextIsReview ? t("themen-repeat", { name: TX(nextTheme, "title") }) : t("themen-next", { name: TX(nextTheme, "title") }))}</button></div>`}
+      <div class="themen-head">${t("themen-title")}</div>
+      <p class="themen-intro">${t("themen-intro")}</p>
+      ${locked ? `
+      <div class="themen-gate" role="note">
+        <span class="tg-icon">${ICONS.lock}</span>
+        <span class="tg-body">
+          <b>${t("themen-gate-title")}</b>
+          <small>${t("themen-gate-sub", { n: needN, m: totalN })}</small>
+          <span class="ri-bar"><span class="ri-bar-fill" style="width:${Math.min(100, Math.round(doneN / needN * 100))}%"></span></span>
+          <small class="tg-progress">${t("themen-gate-progress", { a: doneN, m: totalN })}</small>
+          <button class="btn btn-ghost tg-cta" id="gateTravelBtn">${ICONS.play} ${t("themen-gate-cta")}</button>
+        </span>
+      </div>` : ""}
+      <div class="row-list themen-list">${themes.map(g => {
+        const tp = themeProgress(g);
+        const isNext = !locked && g === nextTheme && !nextIsReview;
+        return `
+        <button class="row-item themen-item ${locked ? "disabled" : ""} ${isNext ? "themen-next" : ""}" data-session="${g.id}" ${locked ? 'data-locked="theme"' : ""}>
+          <span class="ri-icon ${locked ? "muted" : ""}">${locked ? ICONS[g.themeIcon] || ICONS.sparkles : tp.complete ? ICONS.check : ICONS[g.themeIcon] || ICONS.sparkles}</span>
+          <span class="ri-body">
+            <b>${esc(TX(g, "title"))}${isNext ? ` <span class="themen-next-tag">${t("themen-next-tag")}</span>` : ""}${locked ? ` <span class="themen-lock-tag">${ICONS.lock} ${t("themen-locked")}</span>` : ""}</b>
+            <small>${esc(TX(g, "desc"))}</small>
+            <span class="themen-stats">${t("themen-count", { n: tp.total })}${locked ? "" : " · " + (tp.complete ? t("themen-complete") : t("themen-progress", { a: tp.seen, b: tp.total }))}</span>
+            ${locked ? "" : `
+            <span class="ri-bar"><span class="ri-bar-fill" style="width:${Math.round(tp.seen / tp.total * 100)}%"></span></span>`}
+          </span>
+          <span class="ri-arrow ${locked ? "themen-lock" : ""}">${locked ? ICONS.lock : isNext ? ICONS.play : tp.complete ? ICONS.check : ICONS.chevron}</span>
+        </button>`;
+      }).join("")}</div>
+      <p class="foot-note">${t("themen-footnote", { a: seenAll, b: words })}</p>`;
   } else if (state.tab === "ueben") {
     view.innerHTML = `
       <div class="kicker-row"><span class="kicker">${t("tab-ueben")}</span><span class="kicker-meta">${t("ueben-meta", { n: dailyData().sessions, s: dailyData().sessions === 1 ? t("unit-session") : t("unit-sessions") })}</span></div>
@@ -1934,6 +2005,16 @@ function renderHome() {
   const mapHero = $(".map-hero", view);
   if (mapHero) mapHero.addEventListener("click", () => openMapOverlay());
   $("#ctaBtn") && $("#ctaBtn").addEventListener("click", () => startSessionById(rec.id));
+  const thCta = $("#themenCta");
+  if (thCta) thCta.addEventListener("click", () => {
+    const themes = themeGroups();
+    startSessionById((themes.find(g => !themeProgress(g).complete) || themes[0]).id);
+  });
+  const gateTravel = $("#gateTravelBtn");
+  if (gateTravel) gateTravel.addEventListener("click", () => {
+    const nx = nextSceneDef();
+    startSessionById(nx ? nx.id : "c1s1");
+  });
   const sCta = $("#storyCta");
   if (sCta) sCta.addEventListener("click", () => {
     let nx = null;
@@ -1945,7 +2026,12 @@ function renderHome() {
   });
   view.querySelectorAll("[data-session]").forEach(b =>
     b.addEventListener("click", () => {
-      if (b.dataset.locked) { toast(t("locked-toast")); return; }
+      if (b.dataset.locked) {
+        toast(b.dataset.locked === "theme"
+          ? t("themen-locked-toast", { n: Math.max(1, themenGateNeed() - storyDoneCount()) })
+          : t("locked-toast"));
+        return;
+      }
       startSessionById(b.dataset.session);
     }));
   const chBtn = $("#challengeBtn");
@@ -2087,7 +2173,12 @@ const session = { def: null, queue: [], total: 0, idx: 0, firstTry: 0, answered:
 function startSessionById(id) {
   const def = sessionDefById(id);
   if (!def) return;
-  if (def.group && groupLocked(def.group)) { toast(t("locked-lesson")); return; }
+  if (def.group && groupLocked(def.group)) {
+    toast(def.group.theme
+      ? t("themen-locked-toast", { n: Math.max(1, themenGateNeed() - storyDoneCount()) })
+      : t("locked-lesson"));
+    return;
+  }
   if (def.scene && sceneLocked(def.scene)) { toast(t("locked-scene")); return; }
   document.body.dataset.screen = "session";
   session.def = def;
@@ -2697,9 +2788,17 @@ function renderDone() {
   saveDaily(dd);
   if (goalNow) { session.xpEarned += 15; addXp(15, t("today-goal-done")); }
   store.set("sikai_done_" + def.id, store.get("sikai_done_" + def.id, 0) + 1);
+  /* Themen-Gate gerade gekreuzt? (Szene erledigt, Schwelle erreicht, Flag noch nicht gesetzt) */
+  const themenNow = (def.type === "scene" || def.type === "story") &&
+    !store.get("sikai_themen_unlocked", 0) && themenUnlocked();
+  if (themenNow) store.set("sikai_themen_unlocked", 1);
   if (def.type === "group") {
     bumpGroup(def.group.id);
-    srsSeed(def.group.items.map(i => i.id));
+    /* Themen-Pakete: nur die wirklich geuebten Woerter seeden – der Paket-Fortschritt
+       soll pro Session ehrlich wachsen, nicht nach einer Runde komplett sein */
+    srsSeed(def.group.theme
+      ? session.queue.filter(x => x.item && x.group === def.group).map(x => x.item.id)
+      : def.group.items.map(i => i.id));
     store.set("sikai_tiprot", (store.get("sikai_tiprot", 0) + 1) % GRAMMAR_TIPS.length);
   }
   if (def.type === "letters") srsSeed(LETTERS.map(l => l.id));
@@ -2721,6 +2820,7 @@ function renderDone() {
     </div>
     ${nextStop ? `<div class="arrive-card">🧭 ${t("done-arrive", { stop: esc(nextStop.name), sub: esc(TX(nextStop, "sub")) })}</div>` : ""}
     ${goalNow ? `<div class="arrive-card">🔥 ${t("done-goal")}</div>` : ""}
+    ${themenNow ? `<div class="arrive-card themen-unlock">${ICONS.layers} ${t("done-themen")}</div>` : ""}
     <div class="done-actions">
       <button class="btn btn-ghost" id="againBtn">${t("done-again")}</button>
       <button class="btn btn-primary" id="homeBtn">${t("done-home")}</button>
@@ -2976,11 +3076,11 @@ initPwa();
           check("story-xp-no-farm", xpAfter2 === xpAfter, xpAfter2 - xpAfter + " XP");
         }
         // 4b) Basis-Bestand + Freischaltung entlang der Reise
-        check("basis-162-woerter", allItems().length === 162, String(allItems().length));
-        check("basis-21-gruppen", LESSONS[0].groups.length === 21, String(LESSONS[0].groups.length));
+        check("basis-320-woerter", allItems().length === 320, String(allItems().length));
+        check("basis-29-gruppen", LESSONS[0].groups.length === 29, String(LESSONS[0].groups.length));
         localStorage.setItem("sikai_xp", "0");
         renderHome();
-        check("tabbar-da", document.querySelectorAll("#tabbar button").length === 3);
+        check("tabbar-da", document.querySelectorAll("#tabbar button").length === 4);
         state.tab = "start"; renderHome();
         check("start-zeigt-karte-und-stationen-vorab", !!document.querySelector(".map-hero"));
         check("reset-keine-station-erreicht", document.querySelectorAll(".stop.done").length === 0,
@@ -3058,6 +3158,35 @@ initPwa();
             const g = LESSONS[0].groups.find(gr => gr.items.some(it => it.id === id));
             return !g || !groupLocked(g);
           }), trainerIds2.slice(0, 3).join(","));
+
+        // === PHASE E2: Themen-Tab & Story-Gate (frei ab 16 von 31 Szenen) ===
+        localStorage.removeItem("sikai_themen_unlocked");
+        state.tab = "themen"; renderHome();
+        check("themen-8-pakete", document.querySelectorAll(".themen-item").length === 8,
+          String(document.querySelectorAll(".themen-item").length));
+        check("themen-158-woerter", themeGroups().reduce((n, g) => n + g.items.length, 0) === 158);
+        check("themen-gate-banner-bei-15", !!document.querySelector(".themen-gate"));
+        check("themen-gate-cta-da", !!document.querySelector("#gateTravelBtn"));
+        check("themen-alles-gesperrt-bei-15", document.querySelectorAll('.themen-item[data-locked="theme"]').length === 8,
+          String(document.querySelectorAll('.themen-item[data-locked="theme"]').length));
+        check("themen-gate-zaehlt-szenen", ((document.querySelector(".tg-progress") || {}).textContent || "").includes("15/31"),
+          (document.querySelector(".tg-progress") || {}).textContent || "");
+        state.tab = "ueben"; renderHome();
+        check("themen-nicht-im-ueben", !document.querySelector('[data-session="g25"]'));
+        startSessionById("g25");
+        check("themen-session-geblockt-bei-15", document.body.dataset.screen === "tabs" && !(session.def && session.def.id === "g25"));
+        state.tab = "themen"; renderHome();
+        store.set("sikai_done_" + chapterList()[4].scenes[0].id, 1); // 16. Szene = exakt die Schwelle
+        renderHome();
+        check("themen-gate-weg-bei-16", !document.querySelector(".themen-gate"));
+        check("themen-alles-frei-bei-16", document.querySelectorAll(".themen-item[data-locked]").length === 0);
+        startSessionById("g25");
+        check("themen-session-startet-bei-16", !!session.def && session.def.id === "g25" && session.queue.length > 3);
+        check("themen-item-referenz-intakt", themeGroups().every(g => g.items.every(it => itemById(it.id) === it)));
+        state.tab = "themen"; renderHome();
+        check("themen-cta-da", !!document.querySelector("#themenCta") && document.querySelector("#themenCta").textContent.length > 5,
+          (document.querySelector("#themenCta") || {}).textContent || "");
+        check("themen-next-markiert", document.querySelectorAll(".themen-item.themen-next").length === 1);
 
         // === PHASE F: Tagesziel – Heute-Karte (1 Szene + 1 Wiederholung) ===
         const fastFinish = async () => {
@@ -3168,6 +3297,10 @@ initPwa();
           applyLang("en");
           check("lang-en-gesetzt", state.lang === "en" && store.get("sikai_lang", null) === "en");
           check("lang-en-tabbar", [...document.querySelectorAll("#tabbar span")].some(x => x.textContent === "Home"));
+          state.tab = "themen"; renderHome();
+          check("lang-en-themen-titel", ((document.querySelector(".themen-head") || {}).textContent || "") === "Your words, by topic.",
+            (document.querySelector(".themen-head") || {}).textContent || "");
+          state.tab = "start"; renderHome();
           check("lang-en-fortschritt-xp", getXp() === xpVor, getXp() + " statt " + xpVor);
           check("lang-en-fortschritt-done", Object.keys(localStorage).filter(k => /^sikai_done_/.test(k)).length === doneVor);
           check("lang-en-fortschritt-srs", JSON.stringify(srsAll()) === srsVor);

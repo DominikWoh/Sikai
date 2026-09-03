@@ -12,8 +12,8 @@
 
 [![PWA](https://img.shields.io/badge/PWA-installierbar%20%C2%B7%20offline--first-BC5B3D?style=flat-square)](https://dominikwoh.github.io/Sikai/)
 [![Vanilla JS](https://img.shields.io/badge/Vanilla%20JS-0%20Dependencies-1F1E1B?style=flat-square)](#technik-kurzfassung)
-[![Inhalt](https://img.shields.io/badge/9%20Kapitel-162%20Vokabeln%20%C2%B7%20183%20Audios-3F5A34?style=flat-square)](#struktur)
-[![Selbsttest](https://img.shields.io/badge/Selbsttest-98%20Checks-6F9455?style=flat-square)](#technik-kurzfassung)
+[![Inhalt](https://img.shields.io/badge/9%20Kapitel%20%C2%B7%208%20Themen-320%20Vokabeln%20%C2%B7%20341%20Audios-3F5A34?style=flat-square)](#struktur)
+[![Selbsttest](https://img.shields.io/badge/Selbsttest-112%20Checks-6F9455?style=flat-square)](#technik-kurzfassung)
 
 <img src="docs/map.png" width="640" alt="Illustrierte Nepal-Karte mit der Lernreise: 9 Stationen von Kathmandu zum Everest Base Camp, Route mit Fortschritt">
 
@@ -33,7 +33,8 @@ Beim ersten Öffnen speichert sich die gesamte App auf dem Gerät — alle Kapit
 ## Was drin ist
 
 - **Die Reise:** 9 Stationen von Kathmandu über Nagarkot, Pokhara, Lumbini und Chitwan bis zum Everest Base Camp — jede mit eigener Geschichte, Szenen und Entscheidungen.
-- **Vokabeltrainer:** 162 Wörter & Sätze mit Devanagari, Umschrift und Aussprache-Audio; Auffrischen per Spaced Repetition.
+- **Themen-Pakete:** 8 Vokabel-Pakete neben der Reise (Familie & Alter, Körper & Gesundheit, Farben & Wetter, Beruf & Arbeit, Essen & Gastfreundschaft, Vergangenheit erzählen, Abschied & Wiedersehen, Alltag & Zeit) — schalten sich frei, sobald die halbe Reise (16 von 31 Szenen) geschafft ist.
+- **Vokabeltrainer:** 320 Wörter & Sätze mit Devanagari, Umschrift und Aussprache-Audio; Auffrischen per Spaced Repetition.
 - **Motivation:** Tagesziel (1 neue Szene + 1 Wiederholung), Streak, XP, Reise-Pass mit Stempeln, tägliche Challenge.
 - **Extras:** Devanagari-Buchstabenkurs, Hördiktat („Detektiv“), Hören-Multiple-Choice, Satz-Bau.
 
@@ -53,18 +54,18 @@ python -m http.server 8765
 
 ## Technik (Kurzfassung)
 
-- Vanille HTML/CSS/JS, keine Abhängigkeiten, keine externen Anfragen (Fonts lokal eingebettet). Regulärer Selbsttest mit 98 Checks (`?demo=selftest`).
-- `sw.js` (Service Worker) precacht alle ~230 Dateien inkl. der 183 Audio-Dateien; er wird per Skript aus dem Dateibaum generiert und trägt einen Inhalts-Hash als Build-Kennung. Bei Inhaltsänderungen wird er neu generiert — installierte Apps laden die neue Version dann automatisch nach (Update-Banner).
+- Vanille HTML/CSS/JS, keine Abhängigkeiten, keine externen Anfragen (Fonts lokal eingebettet). Regulärer Selbsttest mit 112 Checks (`?demo=selftest`).
+- `sw.js` (Service Worker) precacht alle ~390 Dateien inkl. der 341 Audio-Dateien; er wird per Skript aus dem Dateibaum generiert und trägt einen Inhalts-Hash als Build-Kennung. Bei Inhaltsänderungen wird er neu generiert — installierte Apps laden die neue Version dann automatisch nach (Update-Banner).
 - Manifest + Icons für Android/iOS; relative Pfade, damit alles auch unter einem GitHub-Pages-Unterpfad läuft.
 
 ## Struktur
 
 ```
-index.html        App-Shell (Tabs: Start · Üben · Einstellungen)
+index.html        App-Shell (Tabs: Start · Themen · Üben · Einstellungen)
 app.js            Lern-Engine: Story, SRS, XP, Streak, Quiz-Typen, PWA-Logik
 styles.css        Design (hell/dunkel, warm & ruhig, Devanagari-taugliche Fonts)
-data/             Kapitel 1–9 + Basislektion
+data/             Kapitel 1–9 + Basislektion + Themen-Pakete
 assets/           Icons (Lucide) + Fonts (Fraunces, Mukta — lokal)
-audio/            183 MP3-Aussprachedateien
+audio/            341 MP3-Aussprachedateien
 manifest.json     PWA-Manifest   ·   sw.js   Service Worker (generiert)
 ```

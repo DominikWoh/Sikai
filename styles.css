@@ -24,6 +24,8 @@
   --accent: #D97757;
   --accent-deep: #BC5B3D;
   --accent-soft: #F8E9E2;
+  --lock-red: #B3402E;
+  --lock-red-soft: #F6E4DF;
   --good: #3F5A34;
   --good-bg: #EBF0E3;
   --good-line: #C6D5B4;
@@ -697,6 +699,8 @@ body.script-both .tr.inline { color: var(--ink-soft); font-style: italic; font-w
   --accent: #E08A6B;
   --accent-deep: #C96E4E;
   --accent-soft: #3A2E26;
+  --lock-red: #E0654E;
+  --lock-red-soft: #3D2A24;
   --good: #A3BE8C;
   --good-bg: #2E3527;
   --good-line: #4A5A3B;
@@ -1634,3 +1638,122 @@ body { overflow-x: hidden; }
 }
 .ib-close:hover { background: var(--bg-soft); color: var(--ink); }
 .ib-close svg { width: 15px; height: 15px; }
+
+/* ---------- Themen-Tab: Pakete neben der Reise ---------- */
+
+.themen-head {
+  font-family: var(--serif);
+  font-size: 23px;
+  font-weight: 600;
+  margin: 2px 0 6px;
+}
+.themen-intro {
+  font-size: 14.5px;
+  color: var(--ink-soft);
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+.themen-list { display: flex; flex-direction: column; gap: 10px; }
+.themen-item {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  border-radius: 14px;
+  align-items: flex-start;
+  padding: 14px 16px;
+}
+.themen-item:hover { background: var(--card); border-color: var(--ink-faint); }
+.themen-item .ri-body { flex-direction: column; align-items: stretch; gap: 4px; }
+.themen-item .ri-body small {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.4;
+}
+.themen-item .ri-icon { margin-top: 2px; }
+.themen-item .ri-icon.muted, .themen-item .ri-arrow.muted { color: var(--ink-faint); }
+.themen-item .ri-arrow { margin-top: 4px; }
+.themen-lock-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--lock-red);
+  background: var(--lock-red-soft);
+  border-radius: 999px;
+  padding: 2px 9px;
+  margin-left: 6px;
+  vertical-align: 1px;
+}
+.themen-lock-tag svg { width: 11px; height: 11px; }
+.themen-stats { font-size: 13px; color: var(--ink-soft); margin-top: 2px; }
+.themen-item .ri-arrow.themen-lock { color: var(--lock-red); }
+.themen-item.disabled { opacity: 1; }
+.themen-item.disabled .ri-body b, .themen-item.disabled .ri-body small { color: var(--ink-faint); }
+
+/* Gate-Banner: rotes Schloss + Szenen-Fortschritt, solange Themen zu sind */
+.themen-gate {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--lock-red);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin: 0 0 14px;
+}
+.themen-gate .tg-icon { color: var(--lock-red); margin-top: 2px; }
+.themen-gate .tg-icon svg { width: 22px; height: 22px; }
+.themen-gate .tg-body { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.themen-gate .tg-body b { font-size: 15px; }
+.themen-gate .tg-body small { font-size: 13.5px; color: var(--ink-soft); line-height: 1.45; }
+.themen-gate .tg-progress { font-weight: 600; color: var(--ink); }
+.themen-gate .ri-bar { margin-top: 5px; }
+
+.ri-bar {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--line-strong);
+  border: none;
+  margin-top: 7px;
+  overflow: hidden;
+}
+.ri-bar-fill { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+
+/* Freischalt-Moment auf dem Ergebnis-Screen */
+.arrive-card.themen-unlock { border-left: 3px solid var(--accent); }
+.arrive-card.themen-unlock svg { width: 16px; height: 16px; vertical-align: -3px; color: var(--accent-deep); }
+
+/* Empfohlenes Paket: klare Weiter-Affordance (Richtung Duolingo-START) */
+.themen-item.themen-next {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+.themen-next-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--card);
+  background: var(--accent);
+  border-radius: 999px;
+  padding: 2px 9px;
+  margin-left: 6px;
+  vertical-align: 1px;
+}
+.themen-item .ri-icon svg.check, .themen-item.tp-complete .ri-icon { color: var(--good); }
+.themen-item.themen-next .ri-arrow { color: var(--accent-deep); }
+
+/* Dark Mode: Sekundaertext der Themen-Karten kontraststaerker (Kritiker-Runde 2) */
+:root[data-theme="dark"] .themen-item .ri-body small,
+:root[data-theme="dark"] .themen-gate .tg-body small { color: #CDC8B8; }
+:root[data-theme="dark"] .themen-stats { color: #C2BDAD; }
+.themen-gate .tg-cta { margin-top: 7px; align-self: flex-start; padding: 8px 14px; font-size: 14px; }
+.themen-gate .tg-cta svg { width: 14px; height: 14px; }

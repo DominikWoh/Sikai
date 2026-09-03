@@ -13,10 +13,30 @@ window.I18N = {
 
   /* Tabs & Kop */
   "tab-start": ["Start", "Home"],
+  "tab-themen": ["Themen", "Topics"],
   "tab-ueben": ["Üben", "Practice"],
   "tab-settings": ["Einstellungen", "Settings"],
   "streak": ["Streak", "Streak"],
   "challenge": ["Challenge", "Challenge"],
+
+  /* Themen-Tab: Pakete neben der Reise – frei ab halber Story */
+  "themen-meta": ["{n} Pakete · {w} Wörter", "{n} packs · {w} words"],
+  "themen-title": ["Deine Wörter, nach Themen.", "Your words, by topic."],
+  "themen-intro": ["Vokabel-Pakete zum Abarbeiten – Familie, Körper, Farben, Beruf, Zeit und mehr. Jedes Paket mischt neue Wörter, Abfragen und Zuordnen.", "Vocabulary packs to work through – family, body, colors, jobs, time and more. Each pack mixes new words, quizzes and matching."],
+  "themen-count": ["{n} Wörter", "{n} words"],
+  "themen-progress": ["{a}/{b} gelernt", "{a}/{b} learned"],
+  "themen-complete": ["komplett – wiederholbar", "complete – replayable"],
+  "themen-next": ["Weitermachen: {name}", "Continue: {name}"],
+  "themen-repeat": ["Auffrischen: {name}", "Review: {name}"],
+  "themen-next-tag": ["Weiter", "Next"],
+  "themen-locked": ["ab halber Reise", "unlocks halfway"],
+  "themen-locked-toast": ["Noch {n} Szenen in der Reise – dann schalten sich alle Themen frei.", "{n} more scenes in the journey – then all topics unlock."],
+  "themen-gate-title": ["Die Themen schalten sich frei", "Topics unlock as you go"],
+  "themen-gate-sub": ["Spiel die Reise: Ab {n} von {m} Szenen öffnen sich alle Pakete.", "Play the journey: after {n} of {m} scenes, every pack opens."],
+  "themen-gate-progress": ["{a}/{m} Szenen geschafft", "{a}/{m} scenes done"],
+  "themen-gate-cta": ["Jetzt Reise spielen", "Play the journey now"],
+  "themen-footnote": ["{a} von {b} Themen-Wörtern gelernt · landen automatisch im Üben-Tab", "{a} of {b} topic words learned · flow into the practice tab automatically"],
+  "done-themen": ["Halbe Reise geschafft – die Themen sind frei! Viel Spaß mit den Paketen.", "Half the journey done – topics are unlocked! Enjoy the packs."],
 
   /* Ersteinrichtung */
   "lang-switched": ["Sprache gewechselt – alles bleibt erhalten", "Language switched – all progress stays"],
