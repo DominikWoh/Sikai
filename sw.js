@@ -3,7 +3,7 @@
  * nach dem ersten Oeffnen komplett ohne Internet laeuft. */
 "use strict";
 
-const BUILD = "v19-60c828c045";
+const BUILD = "v19-98571eeb0f";
 const CACHE = "sikai-" + BUILD;
 const ASSETS = [
   "app.js",
@@ -23,6 +23,8 @@ const ASSETS = [
   "assets/icons/car.svg",
   "assets/icons/check.svg",
   "assets/icons/compass.svg",
+  "assets/icons/favicon-32.png",
+  "assets/icons/favicon.svg",
   "assets/icons/flag.svg",
   "assets/icons/flame.svg",
   "assets/icons/heart-handshake.svg",

@@ -1,7 +1,7 @@
 /* Sikai – Lern-Engine v2 (Gamification: Reise, XP, Streak, SRS, Story) */
 "use strict";
 
-const APP_VERSION = "25";
+const APP_VERSION = "26";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const view = $("#view");
@@ -969,7 +969,7 @@ function flagString(x1, y1, x2, y2) { // Gebetsfahnen-Schnur mit Durchhang
     const t = 0.12 + i * 0.19, it = 1 - t;
     const qx = (it * it * x1 + 2 * it * t * mx + t * t * x2).toFixed(1);
     const qy = (it * it * y1 + 2 * it * t * my + t * t * y2).toFixed(1);
-    s += `<path d="M ${qx - 2.1} ${qy} L ${Number(qx) + 2.1} ${qy} L ${qx} ${qy + 3.8} Z" fill="${cols[i]}"/>`;
+    s += `<path d="M ${qx - 2.1} ${qy} L ${Number(qx) + 2.1} ${qy} L ${qx} ${Number(qy) + 3.8} Z" fill="${cols[i]}"/>`;
   }
   return s;
 }
