@@ -3,7 +3,7 @@
  * nach dem ersten Oeffnen komplett ohne Internet laeuft. */
 "use strict";
 
-const BUILD = "v19-482fce6fb1";
+const BUILD = "v19-60c828c045";
 const CACHE = "sikai-" + BUILD;
 const ASSETS = [
   "app.js",

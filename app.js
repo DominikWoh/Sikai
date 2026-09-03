@@ -16,7 +16,7 @@ const store = {
 };
 
 const state = {
-  script: store.get("sikai_script", "both"),
+  script: ["dev", "both", "tr"].indexOf(store.get("sikai_script", "both")) > -1 ? store.get("sikai_script") : "both",
   sound: store.get("sikai_sound", "on"),
   haptic: store.get("sikai_haptic", "on"),
   lang: detectLang(),
@@ -420,6 +420,7 @@ function applyTheme(mode) {
 }
 
 function applyScript(mode) {
+  if (["dev", "both", "tr"].indexOf(mode) === -1) return; // z.B. Klick aus einer fremden .seg
   state.script = mode;
   store.set("sikai_script", mode);
   document.body.className = "script-" + mode;
@@ -738,9 +739,12 @@ function wireSettings(root, close) {
       sw.classList.toggle("on", state.haptic === "on");
     }
   }));
-  root.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => {
+  root.querySelectorAll(".seg:not(.seg-lang) button").forEach(b => b.addEventListener("click", () => {
     applyScript(b.dataset.script);
-    root.querySelectorAll(".seg button").forEach(x => x.classList.toggle("active", x === b));
+    root.querySelectorAll(".seg:not(.seg-lang) button").forEach(x => x.classList.toggle("active", x === b));
+  }));
+  root.querySelectorAll(".seg-lang button").forEach(b => b.addEventListener("click", () => {
+    root.querySelectorAll(".seg-lang button").forEach(x => x.classList.toggle("active", x === b));
   }));
   root.querySelectorAll(".seg-lang button").forEach(b => b.addEventListener("click", () => {
     if (b.dataset.langpick && b.dataset.langpick !== state.lang) applyLang(b.dataset.langpick);
