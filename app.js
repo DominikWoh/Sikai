@@ -1,7 +1,7 @@
 /* Sikai – Lern-Engine v2 (Gamification: Reise, XP, Streak, SRS, Story) */
 "use strict";
 
-const APP_VERSION = "24";
+const APP_VERSION = "25";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const view = $("#view");
@@ -19,12 +19,87 @@ const state = {
   script: store.get("sikai_script", "both"),
   sound: store.get("sikai_sound", "on"),
   haptic: store.get("sikai_haptic", "on"),
+  lang: detectLang(),
   theme: (function () {
     const ut = new URLSearchParams(location.search).get("theme");
     if (ut === "dark" || ut === "light") return ut;
     return store.get("sikai_theme", window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
   })()
 };
+
+/* ---------- Sprache (Deutsch / Englisch) ----------
+   UI-Strings: t("key") -> [de, en] aus data/i18n.js
+   Inhalt: G({de,en}) fuer Feldpaare, TX(obj,"text") fuer text/textEn-Suffixe.
+   Fortschritt (XP, SRS, Szenen) haengt an IDs und bleibt beim Umschalten erhalten. */
+function langHasProgress() {
+  return Object.keys(localStorage).some(k => /^sikai_(xp|srs|daily|done_|group_|tiprot)/.test(k));
+}
+function detectLang() {
+  const saved = store.get("sikai_lang", null);
+  if (saved === "de" || saved === "en") return saved;
+  return langHasProgress() ? "de" : "en"; // Bestandsnutzer waren deutsch, Neustart default en
+}
+function applyLang(l) {
+  if (l !== "de" && l !== "en") return;
+  state.lang = l;
+  store.set("sikai_lang", l);
+  refreshStaticChrome();
+  updateHeaderStats();
+  renderHome();
+  toast(t("lang-switched"));
+}
+/* Statische Chrome-Teile (index.html) nachziehen: Titel, html-lang, Script-Umschalter */
+function refreshStaticChrome() {
+  document.title = t("doc-title");
+  document.documentElement.lang = state.lang;
+  document.querySelectorAll("#scriptToggle [data-i18n]").forEach(b => { b.textContent = t(b.dataset.i18n); });
+  const xp = $("#xpPill"), st = $("#streakPill"), th = $("#themeBtn"), tg = $("#scriptToggle");
+  if (xp) xp.title = t("pill-xp");
+  if (st) st.title = t("pill-streak");
+  if (th) { th.title = t("theme-toggle"); th.setAttribute("aria-label", t("theme-aria")); }
+  if (tg) tg.setAttribute("aria-label", t("set-script"));
+}
+function t(key, vars) {
+  const e = window.I18N && window.I18N[key];
+  let s = Array.isArray(e) ? (state.lang === "en" && e[1] != null ? e[1] : e[0]) : key;
+  if (vars) Object.keys(vars).forEach(k => { s = s.split("{" + k + "}").join(vars[k]); });
+  return s;
+}
+function G(o) { // Feldpaar {de, en}
+  if (!o) return o;
+  return state.lang === "en" && o.en != null ? o.en : o.de;
+}
+function TX(o, base) { // Suffixpaar text/textEn, title/titleEn, why/whyEn ...
+  if (!o) return o;
+  return state.lang === "en" && o[base + "En"] != null ? o[base + "En"] : o[base];
+}
+/* Erststart: Sprachwahl, wenn noch gar nichts gespeichert ist (nicht in Demo-Ansichten) */
+function maybeShowLangPicker() {
+  if (store.get("sikai_lang", null) !== null) return;
+  if (langHasProgress()) return;
+  if (new URLSearchParams(location.search).get("demo")) return;
+  const back = document.createElement("div");
+  back.className = "modal-backdrop";
+  back.innerHTML = `
+    <div class="modal lang-picker" role="dialog" aria-modal="true" aria-label="Language">
+      <div class="lp-title">Choose your language</div>
+      <div class="lp-sub">Sikai teaches Nepali – pick the language you learn with.</div>
+      <div class="lp-row">
+        <button class="btn btn-primary" data-lang-pick="en">English</button>
+        <button class="btn btn-ghost" data-lang-pick="de">Deutsch</button>
+      </div>
+    </div>`;
+  document.body.appendChild(back);
+  back.querySelectorAll("[data-lang-pick]").forEach(b => b.addEventListener("click", () => {
+    const l = b.dataset.langPick;
+    store.set("sikai_lang", l);
+    state.lang = l;
+    back.remove();
+    refreshStaticChrome();
+    renderHome();
+    updateHeaderStats();
+  }));
+}
 
 /* ---------- Helfer ---------- */
 
@@ -93,7 +168,9 @@ function translitDev(txt) {
 function neTrText(txt) {
   if (!txt) return "";
   const t = esc(txt);
-  return t.replace(/<span/g, "<\u200bspan").replace(/[\u0900-\u097F\u0964]+/g, m => {
+  return t.replace(/<span/g, "<\u200bspan").replace(/[\u0900-\u097F\u0964]+/g, (m, off, str) => {
+    // Bereits vorhandene Klammer-Umschrift dahinter? Dann nicht noch einmal transliterieren
+    if (/^\s*\(/.test(str.slice(off + m.length))) return m;
     return `<span class="dev">${m}</span> <i style="color:var(--ink-faint)">(${translitDev(m)})</i>`;
   }).replace(/<\u200bspan/g, "<span");
 }
@@ -299,10 +376,10 @@ function nextSceneDef() {
 /* Beschriftung der Wiederholungs-Aufgabe: fällige Wörter, sonst Fallback */
 function reviewTaskLabel() {
   const due = srsDueIds().length;
-  if (due) return due + (due === 1 ? " Wort" : " Wörter") + " fällig – 3 Minuten Auffrischen";
+  if (due) return t("review-due", { n: due, w: due === 1 ? t("unit-word") : t("unit-words") });
   const learned = Object.keys(srsAll()).filter(id => itemById(id)).length;
-  if (learned) return "Nichts fällig – älteste gelernte Wörter auffrischen";
-  return "Die ersten Basiswörter üben";
+  if (learned) return t("review-none-due");
+  return t("review-first-words");
 }
 
 /* Tages-Challenge: ehrliches Zwei-Klick-Ritual (+10 XP) */
@@ -319,13 +396,13 @@ function bindChallengeBtn(btn) {
   btn.addEventListener("click", () => {
     if (!armed) {
       armed = true;
-      btn.textContent = "Wirklich gemacht? Nochmal tippen ✓";
-      setTimeout(() => { if (!challengeDoneToday() && btn.isConnected) { armed = false; btn.textContent = "Erledigt! (+10 XP)"; } }, 8000);
+      btn.textContent = t("challenge-arm");
+      setTimeout(() => { if (!challengeDoneToday() && btn.isConnected) { armed = false; btn.textContent = t("challenge-open"); } }, 8000);
       return;
     }
     if (challengeDoneToday()) return;
     store.set("sikai_challenge", todayStr());
-    addXp(10, "Tages-Challenge");
+    addXp(10, t("xp-challenge"));
     renderHome();
   });
 }
@@ -464,11 +541,9 @@ function showInstallHint() {
   bar.id = "installBar";
   const ios = isIos();
   bar.innerHTML = `
-    <span>${ios
-      ? "Sikai als App: in Safari die Teilen-Taste antippen, dann „Zum Startbildschirm hinzufügen“."
-      : "Sikai als App installieren – ohne Browser-Leiste, komplett offline nutzbar."}</span>
-    ${ios ? "" : `<button class="btn btn-primary btn-sm" id="installGo" ${pwa.prompt ? "" : "hidden"}>${ICONS.smartphone} Installieren</button>`}
-    <button class="ib-close" id="installClose" aria-label="Hinweis schließen">${ICONS.close}</button>`;
+    <span>${ios ? t("installbar-ios") : t("installbar")}</span>
+    ${ios ? "" : `<button class="btn btn-primary btn-sm" id="installGo" ${pwa.prompt ? "" : "hidden"}>${ICONS.smartphone} ${t("installbar-btn")}</button>`}
+    <button class="ib-close" id="installClose" aria-label="${t("close-hint")}">${ICONS.close}</button>`;
   document.body.appendChild(bar);
   const revealBar = () => bar.classList.add("show");
   requestAnimationFrame(revealBar);
@@ -501,8 +576,8 @@ function showUpdateBar(worker) {
     document.body.appendChild(bar);
   }
   const revealUpdate = () => bar.classList.add("show");
-  bar.innerHTML = `<span>Neue Version bereit – frisch geladene Inhalte & Audios.</span>
-    <button class="btn btn-primary btn-sm" id="updateReload">Jetzt laden</button>`;
+  bar.innerHTML = `<span>${t("updatebar")}</span>
+    <button class="btn btn-primary btn-sm" id="updateReload">${t("updatebar-btn")}</button>`;
   requestAnimationFrame(revealUpdate);
   setTimeout(revealUpdate, 350); // Fallback, falls rAF im Hintergrund-Pane pausiert
   $("#updateReload").addEventListener("click", () => {
@@ -517,13 +592,13 @@ function pwaRowsHtml() {
   if (!pwa.supported) return "";
   const standalone = isStandaloneApp();
   return `
-  <div class="set-kicker">App &amp; Offline</div>
+  <div class="set-kicker">${t("set-app-offline")}</div>
   ${standalone ? "" : `<div class="set-row">
-    <div class="set-info"><b>Als App installieren</b><small id="installHint"></small></div>
-    <button class="btn btn-ghost btn-sm" id="installBtn" data-install hidden>${ICONS.smartphone} Installieren</button>
+    <div class="set-info"><b>${t("set-install")}</b><small id="installHint"></small></div>
+    <button class="btn btn-ghost btn-sm" id="installBtn" data-install hidden>${ICONS.smartphone} ${t("installbar-btn")}</button>
   </div>`}
   <div class="set-row">
-    <div class="set-info"><b>Offline nutzen</b><small id="offlineHint"></small><div class="off-bar" id="offlineBar" hidden><i></i></div></div>
+    <div class="set-info"><b>${t("set-offline")}</b><small id="offlineHint"></small><div class="off-bar" id="offlineBar" hidden><i></i></div></div>
     <span class="off-badge" id="offlineBadge"></span>
   </div>`;
 }
@@ -539,42 +614,42 @@ function refreshPwaCards() {
   if (btn) {
     if (pwa.prompt) {
       btn.hidden = false;
-      hint.textContent = "Eigene Kachel auf dem Handy oder Desktop – öffnet ohne Browser-Leiste.";
+      hint.textContent = t("off-installed-tile");
     } else if (isStandaloneApp()) {
       btn.hidden = true;
-      hint.textContent = "Läuft bereits als App – alles gut.";
+      hint.textContent = t("off-running");
     } else if (isIos()) {
       btn.hidden = true;
-      hint.textContent = "In Safari: Teilen-Taste antippen, dann „Zum Startbildschirm hinzufügen“.";
+      hint.textContent = t("off-ios");
     } else {
       btn.hidden = true;
-      hint.textContent = "Im Browser-Menü: „App installieren“ bzw. „Zum Startbildschirm hinzufügen“.";
+      hint.textContent = t("off-browsermenu");
     }
   }
 
   if (pwa.status === "ready") {
-    offHint.textContent = `Alles gespeichert – ${pwa.total || "alle"} Dateien liegen auf dem Gerät. Nepali lernen geht jetzt ohne Internet.`;
+    offHint.textContent = t("off-ready", { n: pwa.total || t("off-all") });
     offBar.hidden = true;
-    offBadge.textContent = "bereit";
+    offBadge.textContent = t("off-badge-ready");
     offBadge.className = "off-badge ok";
   } else if (pwa.status === "loading") {
-    offHint.textContent = `Wird gespeichert … ${pwa.done} von ${pwa.total} Dateien`;
+    offHint.textContent = t("off-loading", { a: pwa.done, b: pwa.total });
     offBar.hidden = false;
     offBar.firstElementChild.style.width = (pwa.total ? Math.round(pwa.done / pwa.total * 100) : 5) + "%";
     offBadge.textContent = "";
     offBadge.className = "off-badge";
   } else if (pwa.status === "failed") {
-    offHint.textContent = "Unvollständig – einmal mit Internet öffnen, dann lädt der Rest nach.";
+    offHint.textContent = t("off-failed");
     offBar.hidden = true;
-    offBadge.textContent = "Teil";
+    offBadge.textContent = t("off-badge-part");
     offBadge.className = "off-badge part";
   } else if (pwa.status === "regerror") {
-    offHint.textContent = "Offline-Speicher ließ sich nicht starten – Seite einmal neu laden.";
+    offHint.textContent = t("off-regerror");
     offBar.hidden = true;
-    offBadge.textContent = "Fehler";
+    offBadge.textContent = t("off-badge-error");
     offBadge.className = "off-badge part";
   } else {
-    offHint.textContent = "Nach dem ersten Öffnen speichert sich die App komplett auf dem Gerät.";
+    offHint.textContent = t("off-initial");
     offBar.hidden = true;
     offBadge.textContent = "";
     offBadge.className = "off-badge";
@@ -589,39 +664,45 @@ function settingsHtml() {
     + store.get("sikai_done_letters", 0) + store.get("sikai_done_detective", 0) + store.get("sikai_done_story", 0);
   return `
   <div class="set-head">
-    <span class="kicker">Einstellungen</span>
-    <button class="icon-btn" id="settingsClose" aria-label="Einstellungen schließen">${ICONS.close}</button>
+    <span class="kicker">${t("set-title")}</span>
+    <button class="icon-btn" id="settingsClose" aria-label="${t("set-close")}">${ICONS.close}</button>
   </div>
-  <div class="set-kicker">Anzeige & Ton</div>
-  <div class="set-row"><span>Dunkles Design</span><button class="switch ${state.theme === "dark" ? "on" : ""}" data-set="theme" aria-label="Dunkles Design umschalten"><span></span></button></div>
-  <div class="set-row"><span>Ton</span><button class="switch ${state.sound === "on" ? "on" : ""}" data-set="sound" aria-label="Ton umschalten"><span></span></button></div>
-  <div class="set-row"><span>Vibration</span><button class="switch ${state.haptic === "on" ? "on" : ""}" data-set="haptic" aria-label="Vibration umschalten"><span></span></button></div>
-  <div class="set-row"><span>Schrift</span>
-    <div class="seg" role="group" aria-label="Schrift-Anzeige">
-      <button data-script="dev" class="${state.script === "dev" ? "active" : ""}">देवनागरी</button>
-      <button data-script="both" class="${state.script === "both" ? "active" : ""}">Beide</button>
-      <button data-script="tr" class="${state.script === "tr" ? "active" : ""}">Umschrift</button>
+  <div class="set-kicker">${t("set-display")}</div>
+  <div class="set-row"><span>${t("set-lang")}</span>
+    <div class="seg seg-lang" role="group" aria-label="${t("set-lang")}">
+      <button data-langpick="de" class="${state.lang === "de" ? "active" : ""}">Deutsch</button>
+      <button data-langpick="en" class="${state.lang === "en" ? "active" : ""}">English</button>
     </div>
   </div>
-  <div class="set-kicker">Dein Fortschritt</div>
+  <div class="set-row"><span>${t("set-dark")}</span><button class="switch ${state.theme === "dark" ? "on" : ""}" data-set="theme" aria-label="${t("set-dark")}"><span></span></button></div>
+  <div class="set-row"><span>${t("set-sound")}</span><button class="switch ${state.sound === "on" ? "on" : ""}" data-set="sound" aria-label="${t("set-sound")}"><span></span></button></div>
+  <div class="set-row"><span>${t("set-haptic")}</span><button class="switch ${state.haptic === "on" ? "on" : ""}" data-set="haptic" aria-label="${t("set-haptic")}"><span></span></button></div>
+  <div class="set-row"><span>${t("set-script")}</span>
+    <div class="seg" role="group" aria-label="${t("set-script")}">
+      <button data-script="dev" class="${state.script === "dev" ? "active" : ""}">देवनागरी</button>
+      <button data-script="both" class="${state.script === "both" ? "active" : ""}">${t("set-script-both")}</button>
+      <button data-script="tr" class="${state.script === "tr" ? "active" : ""}">${t("set-script-tr")}</button>
+    </div>
+  </div>
+  <div class="set-kicker">${t("set-progress")}</div>
   <div class="set-stats">
     <div><b>${getXp()}</b><small>XP</small></div>
-    <div><b>${streakData().count}</b><small>Streak-Tage</small></div>
-    <div><b>${words}</b><small>Wörter im Trainer</small></div>
-    <div><b>${mastered}</b><small>Runden gemeistert</small></div>
+    <div><b>${streakData().count}</b><small>${t("set-stat-streak")}</small></div>
+    <div><b>${words}</b><small>${t("set-stat-words")}</small></div>
+    <div><b>${mastered}</b><small>${t("set-stat-mastered")}</small></div>
   </div>
   ${pwaRowsHtml()}
-  <div class="set-kicker">Zurücksetzen</div>
+  <div class="set-kicker">${t("set-reset")}</div>
   <div class="set-row">
-    <div class="set-info"><b>Vokabular-Fortschritt</b><small>Auffrisch-Merker & Gruppen-Zähler – XP, Streak und Karte bleiben. Zwei-Klick-Bestätigung.</small></div>
-    <button class="btn btn-ghost btn-sm" id="resetVocabBtn">Zurücksetzen</button>
+    <div class="set-info"><b>${t("set-reset-vocab")}</b><small>${t("set-reset-vocab-sub")}</small></div>
+    <button class="btn btn-ghost btn-sm" id="resetVocabBtn">${t("set-reset-btn")}</button>
   </div>
   <div class="set-row">
-    <div class="set-info"><b>Alles zurücksetzen</b><small>XP, Streak, Karte, alle Zähler – kompletter Neustart der Reise. Zwei-Klick-Bestätigung.</small></div>
-    <button class="btn btn-danger btn-sm" id="resetAllBtn">Alles löschen</button>
+    <div class="set-info"><b>${t("set-reset-all")}</b><small>${t("set-reset-all-sub")}</small></div>
+    <button class="btn btn-danger btn-sm" id="resetAllBtn">${t("set-reset-all-btn")}</button>
   </div>
-  <p class="set-protect">Beide Resets fragen zweimal nach – nichts kann aus Versehen verschwinden.</p>
-  <p class="set-note">Läuft komplett lokal – alle Daten liegen nur in diesem Browser · Version ${APP_VERSION}</p>`;
+  <p class="set-protect">${t("set-protect")}</p>
+  <p class="set-note">${t("set-note", { v: APP_VERSION })}</p>`;
 }
 
 function armReset(btn, armedText, fn) {
@@ -661,23 +742,28 @@ function wireSettings(root, close) {
     applyScript(b.dataset.script);
     root.querySelectorAll(".seg button").forEach(x => x.classList.toggle("active", x === b));
   }));
-  armReset($("#resetVocabBtn", root), "Wirklich? Nochmal tippen", () => {
+  root.querySelectorAll(".seg-lang button").forEach(b => b.addEventListener("click", () => {
+    if (b.dataset.langpick && b.dataset.langpick !== state.lang) applyLang(b.dataset.langpick);
+  }));
+  armReset($("#resetVocabBtn", root), t("reset-vocab-arm"), () => {
     ["sikai_srs"].concat(LESSONS[0].groups.map(g => "sikai_group_" + g.id))
       .forEach(k => localStorage.removeItem(k));
     close();
     renderHome();
-    toast("Vokabular-Fortschritt zurückgesetzt");
+    toast(t("reset-vocab-done"));
   });
-  armReset($("#resetAllBtn", root), "Wirklich alles?", () => {
+  armReset($("#resetAllBtn", root), t("reset-all-arm"), () => {
+    const toastAlt = t("reset-all-done"); // Toast noch in der bisherigen Sprache
     Object.keys(localStorage).filter(k => k.indexOf("sikai_") === 0).forEach(k => localStorage.removeItem(k));
     state.theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    state.script = "both"; state.sound = "on"; state.haptic = "on";
+    state.script = "both"; state.sound = "on"; state.haptic = "on"; state.lang = "en";
     applyTheme(state.theme); applyScript(state.script);
     $("#themeBtn").innerHTML = state.theme === "dark" ? ICONS.sun : ICONS.moon;
     updateHeaderStats();
     close();
     renderHome();
-    toast("Alles zurückgesetzt – die Reise startet neu");
+    maybeShowLangPicker();
+    toast(toastAlt);
   });
 }
 
@@ -693,10 +779,10 @@ function plateHtml() {
     platesegs += `<span class="bhat ${filled ? "full" : ""} ${cold ? "cold" : ""}"></span>`;
   }
   return `
-    <div class="plate ${cold ? "cold" : ""}" title="Dal-Bhat-Teller: ${count} Tag${count === 1 ? "" : "e"} Streak">
+    <div class="plate ${cold ? "cold" : ""}" title="${t("plate-title", { n: count, dw: state.lang === "en" ? "day" : (count === 1 ? t("unit-day") : t("unit-days")) })}">
       <div class="dal"></div>
       <div class="bhat-row">${platesegs}</div>
-      <div class="plate-label">${cold ? "Der Dal Bhat wird kalt – lern heute wieder!" : count === 0 ? "Dein erster Teller wartet" : count + " Tag" + (count === 1 ? "" : "e") + " Streak"}</div>
+      <div class="plate-label">${cold ? t("plate-cold") : count === 0 ? t("plate-first") : t("plate-streak", { n: count, dw: state.lang === "en" ? "day" : (count === 1 ? t("unit-day") : t("unit-days")) })}</div>
     </div>`;
 }
 
@@ -711,10 +797,10 @@ function trailHtml() {
       <div class="stop ${done ? "done" : ""} ${next ? "next" : ""} ${!done && !next ? "locked" : ""}">
         <div class="stop-dot">${done ? ICONS.check : (i + 1)}</div>
         <div class="stop-body">
-          <div class="stop-name">${esc(s.name)} <span class="stop-sub-inline">${esc(s.xp === 0 && !done ? "Ankunft – erst Kapitel 1 meistern, dann geht die Reise weiter" : s.sub)}</span></div>
+          <div class="stop-name">${esc(s.name)} <span class="stop-sub-inline">${esc(s.xp === 0 && !done ? t("trail-arrival") : TX(s, "sub"))}</span></div>
           ${next ? `<div class="progress-track slim"><div class="progress-fill" style="width:${prog}%"></div></div>` : ""}
         </div>
-        <div class="stop-xp">${done ? "erreicht" : next ? esc("Szene " + Math.min(cp.done + 1, cp.total) + "/" + cp.total) : esc("Kapitel " + (CHAPTER_FOR[s.id] + 1))}</div>
+        <div class="stop-xp">${done ? t("trail-reached") : next ? esc(t("trail-scene", { a: Math.min(cp.done + 1, cp.total), b: cp.total })) : esc(t("trail-chapter", { n: CHAPTER_FOR[s.id] + 1 }))}</div>
       </div>`;
   }).join("");
 }
@@ -1256,7 +1342,7 @@ function mapHtml() {
     const done = stopDone(st, xp);
     const next = !done && (i === 0 || stopDone(stops[i - 1], xp));
     const cp = stopChapterProgress(st);
-    const tip = `${i + 1} · ${st.name} · ${st.sub}${done ? " · erreicht" : " · Kapitel " + (CHAPTER_FOR[st.id] + 1) + " · Szene " + Math.min(cp.done + 1, cp.total) + "/" + cp.total}`;
+    const tip = `${i + 1} · ${st.name} · ${TX(st, "sub")}${done ? " · " + t("trail-reached") : " · " + t("trail-chapter", { n: CHAPTER_FOR[st.id] + 1 }) + " · " + t("trail-scene", { a: Math.min(cp.done + 1, cp.total), b: cp.total })}`;
     return `
       ${next ? `<circle cx="${x}" cy="${y}" r="17" class="pulse-ring"/>` : ""}
       <ellipse cx="${x}" cy="${y + 10}" rx="5.5" ry="1.7" class="pin-shadow"/>
@@ -1270,7 +1356,7 @@ function mapHtml() {
 
   return `
     <div class="map-hero">
-      <svg viewBox="15 0 404 300" role="img" aria-label="Illustrierte Nepal-Karte mit deiner Lernreise von Kathmandu zum Everest Base Camp">
+      <svg viewBox="15 0 404 300" role="img" aria-label="${t("map-aria")}">
         <defs>
           <clipPath id="npl">${`<path d="${land}"/>`}</clipPath>
           <pattern id="landdots" width="26" height="26" patternUnits="userSpaceOnUse">
@@ -1455,15 +1541,15 @@ function mapHtml() {
           <rect x="-52" y="-14" width="104" height="28" rx="10" class="banner-bg"/>
           <text x="0" y="5.5" class="banner-text">NEPAL</text>
         </g>
-        <text x="150" y="53" class="banner-sub">— deine Reise —</text>
+        <text x="150" y="53" class="banner-sub">${t("map-banner-sub")}</text>
         <g transform="translate(211,16)" class="npflag">
           <line x1="0" y1="0" x2="0" y2="17" stroke="#8A6A44" stroke-width="1"/>
           <path d="M 0 0.5 L 12 3.4 L 0 6.4 Z" fill="#C05B3C" stroke="#3E5A76" stroke-width="0.7"/>
           <path d="M 0 6.4 L 15 10 L 0 13.6 Z" fill="#C05B3C" stroke="#3E5A76" stroke-width="0.7"/>
         </g>
       </svg>
-      <button class="map-zoom" aria-label="Karte vergrößern">${ICONS.maximize}</button>
-      <div class="map-caption">Kathmandu → Everest Base Camp · Stationen 1–9</div>
+      <button class="map-zoom" aria-label="${t("map-zoom-aria")}">${ICONS.maximize}</button>
+      <div class="map-caption">${t("map-caption")}</div>
     </div>`;
 }
 
@@ -1474,10 +1560,10 @@ function openMapOverlay() {
   const ov = document.createElement("div");
   ov.id = "mapOverlay";
   ov.setAttribute("role", "dialog");
-  ov.setAttribute("aria-label", "Nepal-Karte, vergrößert");
+  ov.setAttribute("aria-label", t("map-overlay-aria"));
   ov.innerHTML = `<div class="mo-stage">${src.outerHTML}</div>
-    <button class="mo-close" aria-label="Karte schließen">${ICONS.close}</button>
-    <div class="mo-hint">Zwei Finger: zoomen · ein Finger: schieben</div>`;
+    <button class="mo-close" aria-label="${t("map-close-aria")}">${ICONS.close}</button>
+    <div class="mo-hint">${t("map-overlay-hint")}</div>`;
   document.body.appendChild(ov);
   const revealOv = () => ov.classList.add("show");
   requestAnimationFrame(revealOv);
@@ -1603,9 +1689,9 @@ function goalText(xp) {
   if (ci !== undefined) {
     const ch = chapterList()[ci];
     const cp = chapterProgress(ch);
-    if (!cp.complete) return "Kapitel " + (ci + 1) + " · Szene " + Math.min(cp.done + 1, cp.total) + " von " + cp.total;
+    if (!cp.complete) return t("goal-text", { n: ci + 1, a: Math.min(cp.done + 1, cp.total), b: cp.total });
   }
-  return xp + " XP · nächstes Ziel: " + nextStop.name + " (" + Math.max(nextStop.xp - xp, 0) + " XP)";
+  return t("goal-xp", { xp, stop: nextStop.name, n: Math.max(nextStop.xp - xp, 0) });
 }
 
 function stopXp(id) {
@@ -1628,14 +1714,14 @@ function storyCardHtml() {
   const next = scenes.find(sc => store.get("sikai_done_" + sc.id, 0) === 0);
   return `
     <div class="card story-card">
-      <div class="card-kicker">${ICONS.play} Kapitel ${ci + 1} · Szene ${next ? scenes.indexOf(next) + 1 : scenes.length} von ${scenes.length}</div>
-      <div class="story-card-title">${esc(ch.title)}</div>
-      <div class="scene-dots">${scenes.map(sc => `<span class="sdot ${store.get("sikai_done_" + sc.id, 0) > 0 ? "done" : ""} ${next && next.id === sc.id ? "next" : ""}" title="${esc(sc.title)}"></span>`).join("")}</div>
+      <div class="card-kicker">${ICONS.play} ${t("goal-text", { n: ci + 1, a: next ? scenes.indexOf(next) + 1 : scenes.length, b: scenes.length })}</div>
+      <div class="story-card-title">${esc(TX(ch, "title"))}</div>
+      <div class="scene-dots">${scenes.map(sc => `<span class="sdot ${store.get("sikai_done_" + sc.id, 0) > 0 ? "done" : ""} ${next && next.id === sc.id ? "next" : ""}" title="${esc(TX(sc, "title"))}"></span>`).join("")}</div>
       ${next
-        ? `<button class="btn btn-primary cta" id="storyCta">${ICONS.play} Szene ${scenes.indexOf(next) + 1}: ${esc(next.title)}</button>
-           <div class="cta-sub">${ci === 0 ? "Flughafen → Geld → Weg → Hotel → Taxi nach Thamel" : "Die Geschichte geht weiter"}</div>`
-        : `<div class="tbonus ok">Kapitel ${ci + 1} abgeschlossen – die Reise geht weiter ✓</div>
-           <button class="btn btn-ghost cta" id="storyCta">${ICONS.refresh} Kapitel ${ci + 1} wiederholen</button>`}
+        ? `<button class="btn btn-primary cta" id="storyCta">${ICONS.play} ${t("story-cta", { n: scenes.indexOf(next) + 1, title: TX(next, "title") })}</button>
+           <div class="cta-sub">${ci === 0 ? t("story-route-ch1") : t("story-continues")}</div>`
+        : `<div class="tbonus ok">${t("story-complete", { n: ci + 1 })}</div>
+           <button class="btn btn-ghost cta" id="storyCta">${ICONS.refresh} ${t("story-repeat", { n: ci + 1 })}</button>`}
     </div>`;
 }
 
@@ -1644,7 +1730,7 @@ function passportHtml() {
   const doneN = JOURNEY.stops.filter(st => stopDone(st, xp)).length;
   return `
   <div class="card passport-card">
-    <div class="card-kicker">${ICONS.flag} Reise-Pass</div>
+    <div class="card-kicker">${ICONS.flag} ${t("passport-title")}</div>
     <div class="stamps">
       ${JOURNEY.stops.map((st, i) => {
         const done = stopDone(st, xp);
@@ -1652,7 +1738,7 @@ function passportHtml() {
         return `<span class="stamp ${done ? "done" : ""} ${active ? "active" : ""}" title="${esc(st.name)}">${done ? ICONS.check : i + 1}</span>`;
       }).join("")}
     </div>
-    <div class="pass-note">${doneN} von ${JOURNEY.stops.length} Stationen gestempelt</div>
+    <div class="pass-note">${t("passport-note", { a: doneN, b: JOURNEY.stops.length })}</div>
   </div>`;
 }
 
@@ -1666,20 +1752,20 @@ function sessionCardsHtml() {
     const doneN = groupDoneCount(g.id);
     const locked = groupLocked(g);
     const stop = g.unlock ? JOURNEY.stops.find(x => x.id === g.unlock) : null;
-    cards.push({ id: g.id, cls: "group", icon: ICONS[G_ICONS[g.id]] || ICONS.sparkles, title: g.title,
+    cards.push({ id: g.id, cls: "group", icon: ICONS[G_ICONS[g.id]] || ICONS.sparkles, title: TX(g, "title"),
       sub: locked
-        ? "Erst Kapitel " + (CHAPTER_FOR[stop.id] + 1) + " meistern – dann " + stop.name
-        : g.items.length + " Ausdrücke" + (doneN ? " · " + doneN + "× gemeistert" : ""),
+        ? t("group-locked", { n: CHAPTER_FOR[stop.id] + 1, stop: stop.name })
+        : t("group-sub", { n: g.items.length }) + (doneN ? " · " + t("group-mastered", { n: doneN }) : ""),
       locked });
   });
-  cards.push({ id: "refresh", cls: "srs", icon: ICONS.refresh, title: "Vokabeltrainer",
-    sub: due ? due + (due === 1 ? " Wort" : " Wörter") + " fällig · danach freies Üben" : "Freies Üben – alle gelernten Wörter dran" });
-  cards.push({ id: "letters", cls: "letters", icon: '<span class="dev">अ</span>', title: "Devanagari enträtseln",
-    sub: "12 Buchstaben mit Eselsbrücken – die Angst vor der Schrift nimmt ab" });
-  cards.push({ id: "detective", cls: "detective", icon: ICONS.search, title: "Höflichkeits-Detektiv",
-    sub: "ta, timi oder tapaai? Wer verdient welches „du“?" });
-  cards.push({ id: "story", cls: "story", icon: ICONS.car, title: "Story: Taxi nach Thamel",
-    sub: "Dein erster echter Dialog – landen und durchkommen" });
+  cards.push({ id: "refresh", cls: "srs", icon: ICONS.refresh, title: t("card-trainer"),
+    sub: due ? t("card-trainer-due", { n: due, w: due === 1 ? t("unit-word") : t("unit-words") }) : t("card-trainer-free") });
+  cards.push({ id: "letters", cls: "letters", icon: '<span class="dev">अ</span>', title: t("card-letters"),
+    sub: t("card-letters-sub") });
+  cards.push({ id: "detective", cls: "detective", icon: ICONS.search, title: t("card-detective"),
+    sub: t("card-detective-sub") });
+  cards.push({ id: "story", cls: "story", icon: ICONS.car, title: t("card-story"),
+    sub: t("card-story-sub") });
   return cards.map(c => `
     <button class="row-item ${c.disabled || c.locked ? "disabled" : ""}" data-session="${c.id}" ${c.disabled ? "disabled" : ""} ${c.locked ? 'data-locked="1"' : ""}>
       <span class="ri-icon">${c.locked ? ICONS.close : c.icon}</span>
@@ -1693,20 +1779,30 @@ function recommendedSession() {
   const due = srsDueIds().length;
   for (const c of chapterList()) {
     const nextScene = c.scenes.find(sc => store.get("sikai_done_" + sc.id, 0) === 0);
-    if (nextScene) return { id: nextScene.id, label: "Kapitel " + (chapterList().indexOf(c) + 1) + " · " + nextScene.title };
+    if (nextScene) return { id: nextScene.id, label: t("rec-scene", { n: chapterList().indexOf(c) + 1, title: TX(nextScene, "title") }) };
   }
   const g = LESSONS[0].groups.find(g => !groupLocked(g) && groupDoneCount(g.id) === 0);
-  if (g) return { id: g.id, label: g.title };
-  if (due >= 3) return { id: "refresh", label: `Vokabeltrainer: ${due} fällig` };
+  if (g) return { id: g.id, label: TX(g, "title") };
+  if (due >= 3) return { id: "refresh", label: t("rec-trainer", { n: due }) };
   const extras = [
     { id: "letters", n: store.get("sikai_done_letters", 0) },
     { id: "detective", n: store.get("sikai_done_detective", 0) },
     { id: "story", n: store.get("sikai_done_story", 0) }
   ].sort((a, b) => a.n - b.n);
-  if (extras[0].n === 0) return { id: extras[0].id, label: sessionDefById(extras[0].id).title };
-  if (due > 0) return { id: "refresh", label: `Vokabeltrainer: ${due} fällig` };
+  if (extras[0].n === 0) return { id: extras[0].id, label: t("card-" + (extras[0].id === "letters" ? "letters" : extras[0].id === "detective" ? "detective" : "story")) };
+  if (due > 0) return { id: "refresh", label: t("rec-trainer", { n: due }) };
   const fb = LESSONS[0].groups.find(g => !groupLocked(g)) || LESSONS[0].groups[0];
-  return { id: fb.id, label: fb.title + " festigen" };
+  return { id: fb.id, label: state.lang === "en" ? "Reinforce: " + TX(fb, "title") : TX(fb, "title") + " festigen" };
+}
+
+function dailySceneTitle(dd) { // sceneId sprachneutral aufloesen, aeltere Eintrage mit gespeichertem Titel fallbacken
+  if (dd.sceneId) {
+    for (const c of chapterList()) {
+      const sc = c.scenes.find(x => x.id === dd.sceneId);
+      if (sc) return TX(sc, "title");
+    }
+  }
+  return dd.sceneTitle || "";
 }
 
 function todayCardHtml() {
@@ -1716,47 +1812,47 @@ function todayCardHtml() {
   const sceneDone = dd.scene || !nx;
   const reviewDone = !!dd.review;
   const complete = sceneDone && reviewDone;
-  const sceneSub = !nx ? "Alle Kapitel gemeistert ✓"
-    : sceneDone ? `Heute geschafft ✓${dd.sceneTitle ? " (" + dd.sceneTitle + ")" : ""}`
-    : `Kapitel ${nx.ci + 1} · Szene ${chapterList()[nx.ci].scenes.indexOf(nx.scene) + 1}: ${nx.scene.title}`;
+  const sceneSub = !nx ? t("today-all-mastered")
+    : sceneDone ? t("today-scene-done", { title: dailySceneTitle(dd) ? " (" + dailySceneTitle(dd) + ")" : "" })
+    : t("today-scene-next", { n: nx.ci + 1, i: chapterList()[nx.ci].scenes.indexOf(nx.scene) + 1, title: TX(nx.scene, "title") });
   return `
     <div class="card today-card" id="todayCard">
       <div class="tc-head">
-        <span class="tc-kicker">Heute${streakN ? ` · <b>Tag ${streakN}</b>` : ""}</span>
+        <span class="tc-kicker">${t("today-kicker")}${streakN ? ` · <b>${t("today-day", { n: streakN })}</b>` : ""}</span>
         ${streakN && !streakCold() ? `<span class="tc-flame">${ICONS.flame}</span>` : ""}
-        ${complete ? `<span class="tc-badge">${ICONS.check} Tagesziel komplett</span>` : ""}
+        ${complete ? `<span class="tc-badge">${ICONS.check} ${t("today-goal-done")}</span>` : ""}
       </div>
       <div class="tc-tasks">
         <button class="tc-task ${sceneDone ? "done" : ""}" data-goal="scene">
           <span class="tc-check">${ICONS.check}</span>
-          <span class="tc-body"><b>Neue Szene</b><small>${esc(sceneSub)}</small></span>
+          <span class="tc-body"><b>${t("today-new-scene")}</b><small>${esc(sceneSub)}</small></span>
           ${nx ? `<span class="tc-go">${sceneDone ? ICONS.refresh : ICONS.play}</span>` : ""}
         </button>
         <button class="tc-task ${reviewDone ? "done" : ""}" data-goal="review">
           <span class="tc-check">${ICONS.check}</span>
-          <span class="tc-body"><b>Wiederholung</b><small>${esc(reviewTaskLabel())}</small></span>
+          <span class="tc-body"><b>${t("today-review")}</b><small>${esc(reviewTaskLabel())}</small></span>
           <span class="tc-go">${ICONS.refresh}</span>
         </button>
       </div>
       ${complete
-        ? `<div class="tc-note ok">${ICONS.flame} Tagesziel komplett${dd.goalBonus ? " · +15 XP kassiert" : ""}</div>`
-        : `<div class="tc-note">Eine Szene und eine Wiederholung – mehr braucht Nepali pro Tag nicht</div>`}
+        ? `<div class="tc-note ok">${ICONS.flame} ${t("today-goal-done")}${dd.goalBonus ? " · " + t("today-bonus-got") : ""}</div>`
+        : `<div class="tc-note">${t("today-note")}</div>`}
     </div>`;
 }
 
 const TABS = [
-  { id: "start", label: "Start" },
-  { id: "ueben", label: "Üben" },
-  { id: "einstellungen", label: "Einstellungen" }
+  { id: "start", label: "tab-start" },
+  { id: "ueben", label: "tab-ueben" },
+  { id: "einstellungen", label: "tab-settings" }
 ];
 const TAB_ICONS = { start: "home", ueben: "refresh", einstellungen: "settings" };
 
 function renderTabbar() {
   const bar = $("#tabbar");
   if (!bar) return;
-  bar.innerHTML = TABS.map(t => `
-    <button data-tab="${t.id}" class="${state.tab === t.id ? "active" : ""}" aria-current="${state.tab === t.id ? "page" : "false"}">
-      ${ICONS[TAB_ICONS[t.id]]}<span>${t.label}</span>
+  bar.innerHTML = TABS.map(tab => `
+    <button data-tab="${tab.id}" class="${state.tab === tab.id ? "active" : ""}" aria-current="${state.tab === tab.id ? "page" : "false"}">
+      ${ICONS[TAB_ICONS[tab.id]]}<span>${t(tab.label)}</span>
     </button>`).join("");
   bar.querySelectorAll("[data-tab]").forEach(b =>
     b.addEventListener("click", () => switchTab(b.dataset.tab)));
@@ -1781,52 +1877,52 @@ function renderHome() {
     view.innerHTML = `<div class="settings-sheet settings-page">${settingsHtml()}</div>`;
   } else if (state.tab === "ueben") {
     view.innerHTML = `
-      <div class="kicker-row"><span class="kicker">Üben</span><span class="kicker-meta">Heute: ${dailyData().sessions} Session${dailyData().sessions === 1 ? "" : "s"}</span></div>
+      <div class="kicker-row"><span class="kicker">${t("tab-ueben")}</span><span class="kicker-meta">${t("ueben-meta", { n: dailyData().sessions, s: dailyData().sessions === 1 ? t("unit-session") : t("unit-sessions") })}</span></div>
       <div class="cta-row"><button class="btn btn-primary cta" id="ctaBtn">${ICONS.play} ${esc(rec.label)}</button></div>
       ${chapterList().map((c, ci) => `
-      <div class="kicker-row"><span class="kicker">Kapitel ${ci + 1}</span><span class="kicker-meta">${esc(c.title)}</span></div>
+      <div class="kicker-row"><span class="kicker">${t("chapter-n", { n: ci + 1 })}</span><span class="kicker-meta">${esc(TX(c, "title"))}</span></div>
       <div class="row-list">${c.scenes.map((sc, i) => {
         const done = store.get("sikai_done_" + sc.id, 0) > 0;
         const locked = sceneLocked(sc);
         return `
         <button class="row-item ${locked ? "disabled" : ""}" data-session="${sc.id}" ${locked ? 'data-locked="1"' : ""}>
           <span class="ri-icon">${locked ? ICONS.close : done ? ICONS.check : ICONS.map_pin}</span>
-          <span class="ri-body"><b>Szene ${i + 1} · ${esc(sc.title)}</b><small>${locked ? "Erst Kapitel " + ci + " meistern" : done ? "gemeistert – wiederholbar" : "Teil der Geschichte"}</small></span>
+          <span class="ri-body"><b>${t("scene-n", { n: i + 1 })} · ${esc(TX(sc, "title"))}</b><small>${locked ? t("ueben-locked", { n: ci }) : done ? t("ueben-done") : t("ueben-story")}</small></span>
           <span class="ri-arrow">${locked ? "" : ICONS.chevron}</span>
         </button>`;
       }).join("")}</div>`).join("")}
-      <div class="kicker-row"><span class="kicker">Alle Sessions</span></div>
+      <div class="kicker-row"><span class="kicker">${t("ueben-all-sessions")}</span></div>
       <div class="row-list">${sessionCardsHtml()}</div>
-      <p class="foot-note">Der Vokabeltrainer übt nur, was auf deiner Reise schon frei ist</p>`;
+      <p class="foot-note">${t("ueben-footnote")}</p>`;
   } else {
     view.innerHTML = `
     ${todayCardHtml()}
-    <div class="kicker-row"><span class="kicker">Deine Reise</span><span class="kicker-meta">${esc(goalText(xp))}</span></div>
+    <div class="kicker-row"><span class="kicker">${t("home-journey")}</span><span class="kicker-meta">${esc(goalText(xp))}</span></div>
     ${mapHtml()}
     ${storyCardHtml()}
     ${passportHtml()}
-    <div class="kicker-row"><span class="kicker">Streak & Challenge</span></div>
+    <div class="kicker-row"><span class="kicker">${t("home-streak-challenge")}</span></div>
     <div class="today-band">
       <div class="tb-streak">
-        <div class="big-num">${streakN}<small>Tag${streakN === 1 ? "" : "e"}</small></div>
-        <div class="stat-cap">${ICONS.flame} Streak</div>
+        <div class="big-num">${streakN}<small>${streakN === 1 ? t("unit-day") : t("unit-days")}</small></div>
+        <div class="stat-cap">${ICONS.flame} ${t("streak")}</div>
         ${plateHtml()}
       </div>
       <div class="tb-sep"></div>
       <div class="tb-challenge">
-        <div class="tb-ch-label">Challenge</div>
-        <p class="ch-text">${esc(ch.de)}</p>
+        <div class="tb-ch-label">${t("challenge")}</div>
+        <p class="ch-text">${esc(G(ch))}</p>
         ${ch.gloss ? `
-        <button class="linkish ch-help-btn" aria-expanded="false">Was heißt das?</button>
-        <div class="ch-gloss" hidden>${esc(ch.gloss)}</div>` : ""}
+        <button class="linkish ch-help-btn" aria-expanded="false">${t("ch-help")}</button>
+        <div class="ch-gloss" hidden>${esc(TX(ch, "gloss"))}</div>` : ""}
         <button class="btn btn-ghost" id="challengeBtn" ${chDone ? "disabled" : ""}>
-          ${chDone ? ICONS.check + " erledigt · +10 XP" : "Erledigt! (+10 XP)"}
+          ${chDone ? ICONS.check + " " + t("challenge-done") : t("challenge-open")}
         </button>
       </div>
     </div>
-    <div class="kicker-row"><span class="kicker">Stationen 1–${JOURNEY.stops.length}</span></div>
+    <div class="kicker-row"><span class="kicker">${t("stations-n", { n: JOURNEY.stops.length })}</span></div>
     <div class="trail">${trailHtml()}</div>
-    <p class="foot-note">Läuft komplett lokal · Devanagari + Umschrift umschaltbar in den Einstellungen</p>`;
+    <p class="foot-note">${t("home-footnote")}</p>`;
   }
 
   renderTabbar();
@@ -1845,7 +1941,7 @@ function renderHome() {
   });
   view.querySelectorAll("[data-session]").forEach(b =>
     b.addEventListener("click", () => {
-      if (b.dataset.locked) { toast("Noch gesperrt – lerne weiter, die Station kommt"); return; }
+      if (b.dataset.locked) { toast(t("locked-toast")); return; }
       startSessionById(b.dataset.session);
     }));
   const chBtn = $("#challengeBtn");
@@ -1855,7 +1951,7 @@ function renderHome() {
     const g = $(".ch-gloss");
     const open = g.hasAttribute("hidden");
     g.toggleAttribute("hidden", !open);
-    chHelp.textContent = open ? "Übersetzung verbergen" : "Was heißt das?";
+    chHelp.textContent = open ? t("ch-hide") : t("ch-help");
     chHelp.setAttribute("aria-expanded", String(open));
   });
   view.querySelectorAll("#todayCard [data-goal]").forEach(b =>
@@ -1863,7 +1959,7 @@ function renderHome() {
       if (b.dataset.goal === "scene") {
         const nx = nextSceneDef();
         if (nx) startSessionById(nx.scene.id);
-        else toast("Alle Kapitel gemeistert – großartig!");
+        else toast(t("all-mastered-toast"));
       } else {
         startSessionById("refresh");
       }
@@ -1921,7 +2017,7 @@ function buildQueue(def) {
     }
     ids.filter(id => itemById(id)).forEach((id, i) => q.push({ type: quizTypes[i % 3], item: itemById(id), group: LESSONS[0].groups.find(g => g.items.some(it => it.id === id)) }));
     if (ids.length >= 4) {
-      const g = { id: "due", title: dueIds.length ? "Auffrischen" : "Vokabeltrainer", items: ids.map(itemById) };
+      const g = { id: "due", title: dueIds.length ? t("refresh-due-title") : t("card-trainer"), items: ids.map(itemById) };
       q.push({ type: "match", group: g });
     }
   }
@@ -1943,13 +2039,13 @@ function buildQueue(def) {
 
   if (def.type === "scene") {
     const sc = def.scene;
-    const grp = { id: sc.id, title: sc.title, items: [] };
+    const grp = { id: sc.id, title: TX(sc, "title"), items: [] };
     if (sc.useStory1) {
       const pre = (sc.items || []).map(itemById);
-      pre.forEach(it => q.push({ type: "new", item: it, group: { id: sc.id, title: sc.title, items: pre } }));
+      pre.forEach(it => q.push({ type: "new", item: it, group: { id: sc.id, title: TX(sc, "title"), items: pre } }));
       STORY1.steps.forEach(st => q.push({ type: "story", step: Object.assign({}, st, { art: sc.art }) }));
     } else {
-      q.push({ type: "story", step: { type: "narr", art: sc.art, de: sc.intro, reveal: sc.reveal } });
+      q.push({ type: "story", step: { type: "narr", art: sc.art, de: sc.intro, en: sc.introEn, reveal: sc.reveal } });
       const items = (sc.items || []).map(itemById);
       grp.items = items;
       items.forEach(it => q.push({ type: "new", item: it, group: grp }));
@@ -1958,8 +2054,8 @@ function buildQueue(def) {
       grp.items = pool;
       shuffle(pool).filter(it => it).slice(0, 3).forEach((it, i) => q.push({ type: quizTypes[i % 3], item: it, group: grp }));
       if (pool.length >= 4) q.push({ type: "match", group: grp });
-      q.push({ type: "story", step: { type: "choice", art: sc.art, de: sc.choice.q, options: sc.choice.options } });
-      q.push({ type: "story", step: { type: "end", art: sc.art, de: sc.title + " geschafft!", bonus: sc.endBonus || "Die Geschichte geht weiter …" } });
+      q.push({ type: "story", step: { type: "choice", art: sc.art, de: sc.choice.q, en: sc.choice.qEn, options: sc.choice.options } });
+      q.push({ type: "story", step: { type: "end", art: sc.art, de: sc.title + " geschafft!", en: (sc.titleEn || sc.title) + " complete!", bonus: sc.endBonus ? TX(sc, "endBonus") : t("story-goes-on") } });
     }
   }
   return q;
@@ -1968,15 +2064,15 @@ function buildQueue(def) {
 function sessionDefById(id) {
   const map = {};
   LESSONS[0].groups.forEach((g, i) => {
-    map[g.id] = { id: g.id, type: "group", groupIndex: i, title: g.title, xpBonus: 20, group: g };
+    map[g.id] = { id: g.id, type: "group", groupIndex: i, title: TX(g, "title"), xpBonus: 20, group: g };
   });
-  map.refresh = { id: "refresh", type: "refresh", title: "Vokabeltrainer", xpBonus: 15 };
-  map.letters = { id: "letters", type: "letters", title: "Devanagari enträtseln", xpBonus: 20 };
-  map.detective = { id: "detective", type: "detective", title: "Höflichkeits-Detektiv", xpBonus: 20 };
+  map.refresh = { id: "refresh", type: "refresh", title: t("card-trainer"), xpBonus: 15 };
+  map.letters = { id: "letters", type: "letters", title: t("card-letters"), xpBonus: 20 };
+  map.detective = { id: "detective", type: "detective", title: t("card-detective"), xpBonus: 20 };
   chapterList().forEach((c, ci) => c.scenes.forEach(sc => {
-    map[sc.id] = { id: sc.id, type: "scene", scene: sc, title: "Kapitel " + (ci + 1) + " · " + sc.title, xpBonus: sc.xpBonus };
+    map[sc.id] = { id: sc.id, type: "scene", scene: sc, title: t("chapter-n", { n: ci + 1 }) + " · " + TX(sc, "title"), xpBonus: sc.xpBonus };
   }));
-  map.story = map.c1s5 || { id: "story", type: "story", title: "Taxi nach Thamel", xpBonus: 30 };
+  map.story = map.c1s5 || { id: "story", type: "story", title: t("story1-title"), xpBonus: 30 };
   return map[id];
 }
 
@@ -1987,13 +2083,13 @@ const session = { def: null, queue: [], total: 0, idx: 0, firstTry: 0, answered:
 function startSessionById(id) {
   const def = sessionDefById(id);
   if (!def) return;
-  if (def.group && groupLocked(def.group)) { toast("Diese Lektion schaltet sich auf der Reise frei"); return; }
-  if (def.scene && sceneLocked(def.scene)) { toast("Erst das vorherige Kapitel meistern – die Geschichte baut auf"); return; }
+  if (def.group && groupLocked(def.group)) { toast(t("locked-lesson")); return; }
+  if (def.scene && sceneLocked(def.scene)) { toast(t("locked-scene")); return; }
   document.body.dataset.screen = "session";
   session.def = def;
   session.queue = buildQueue(def);
   if (!session.queue.length) {
-    toast("Gerade gibt es nichts zu üben 🌱");
+    toast(t("empty-queue"));
     return;
   }
   session.total = session.queue.length;
@@ -2006,29 +2102,29 @@ function startSessionById(id) {
 }
 
 function stepHtml(step) {
-  const chip = t => `<span class="ex-chip">${t}</span>`;
+  const chip = txt => `<span class="ex-chip">${txt}</span>`;
 
   if (step.type === "new") return `
     <div class="exercise" data-step="new">
-      ${chip(`Neu · ${esc(step.group.title)}`)}
-      <div class="ex-title">Neuer Ausdruck</div>
+      ${chip(t("chip-new") + " " + esc(TX(step.group, "title")))}
+      <div class="ex-title">${t("ex-new-title")}</div>
       <div class="prompt-ne ne dev">${esc(step.item.ne)}</div>
       <div class="prompt-tr tr">${esc(step.item.tr)}</div>
-      <div class="prompt-de">= ${esc(step.item.de)}</div>
-      <div class="audio-stage"><button class="audio-btn" data-audio aria-label="Vorlesen">${ICONS.speaker}</button></div>
-      ${step.item.note ? `<p class="note">${neTrText(step.item.note)}</p>` : ""}
+      <div class="prompt-de">= ${esc(G(step.item))}</div>
+      <div class="audio-stage"><button class="audio-btn" data-audio aria-label="${t("aria-read")}">${ICONS.speaker}</button></div>
+      ${step.item.note ? `<p class="note">${neTrText(TX(step.item, "note"))}</p>` : ""}
     </div>`;
 
   if (step.type === "audio4") return `
     <div class="exercise" data-step="audio4">
-      ${chip("Hörübung")}<div class="ex-title">Was hast du gehört?</div>
-      <div class="audio-stage"><button class="audio-btn" data-audio aria-label="Abspielen">${ICONS.speaker}</button></div>
+      ${chip(t("chip-audio"))}<div class="ex-title">${t("ex-audio-title")}</div>
+      <div class="audio-stage"><button class="audio-btn" data-audio aria-label="${t("aria-play")}">${ICONS.speaker}</button></div>
       <div class="options" data-options></div>
     </div>`;
 
   if (step.type === "ne2de") return `
     <div class="exercise" data-step="ne2de">
-      ${chip("Übersetzen")}<div class="ex-title">Was bedeutet das?</div>
+      ${chip(t("chip-translate"))}<div class="ex-title">${t("ex-ne2de-title")}</div>
       <div class="prompt-ne ne dev">${esc(step.item.ne)}</div>
       <div class="prompt-tr tr">${esc(step.item.tr)}</div>
       <div class="options" data-options></div>
@@ -2036,8 +2132,8 @@ function stepHtml(step) {
 
   if (step.type === "de2ne") return `
     <div class="exercise" data-step="de2ne">
-      ${chip("Übersetzen")}<div class="ex-title">Wie sagt man das auf Nepali?</div>
-      <div class="prompt-de">„${esc(step.item.de)}“</div>
+      ${chip(t("chip-translate"))}<div class="ex-title">${t("ex-de2ne-title")}</div>
+      <div class="prompt-de">„${esc(G(step.item))}“</div>
       <div class="options" data-options></div>
     </div>`;
 
@@ -2046,10 +2142,10 @@ function stepHtml(step) {
     const left = shuffle(pool), right = shuffle(pool);
     return `
       <div class="exercise" data-step="match">
-        ${chip(`${esc(step.group.title)} · Paare`)}<div class="ex-title">Verbinde die Paare</div>
+        ${chip(esc(TX(step.group, "title")) + " · " + t("chip-pairs"))}<div class="ex-title">${t("ex-match-title")}</div>
         <div class="match-grid">
           <div data-col="ne">${left.map(i => `<button class="match-tile" data-id="${i.id}" data-side="ne">${neTr(i)}</button>`).join("")}</div>
-          <div data-col="de">${right.map(i => `<button class="match-tile" data-id="${i.id}" data-side="de">${esc(i.de)}</button>`).join("")}</div>
+          <div data-col="de">${right.map(i => `<button class="match-tile" data-id="${i.id}" data-side="de">${esc(G(i))}</button>`).join("")}</div>
         </div>
       </div>`;
   }
@@ -2058,21 +2154,21 @@ function stepHtml(step) {
     const tokens = step.item.ne.replace(/[।?]$/g, "").trim().split(/\s+/);
     const others = BUILD_SENTENCES.filter(id => id !== step.item.id).map(itemById);
     const distract = shuffle(others.flatMap(o => o.ne.replace(/[।?]$/g, "").trim().split(/\s+/)))
-      .filter(t => !tokens.includes(t)).slice(0, 3);
+      .filter(tok => !tokens.includes(tok)).slice(0, 3);
     const trMap = {};
     for (const it of BUILD_SENTENCES.map(itemById)) {
       const neT = it.ne.replace(/[।?]$/g, "").trim().split(/\s+/);
       const trT = it.tr.replace(/[।?]$/g, "").trim().split(/\s+/);
-      neT.forEach((t, i) => { if (!trMap[t] && trT[i]) trMap[t] = trT[i].replace(/[.,?!]$/, ""); });
+      neT.forEach((tok, i) => { if (!trMap[tok] && trT[i]) trMap[tok] = trT[i].replace(/[.,?!]$/, ""); });
     }
     const bank = shuffle(tokens.concat(distract));
     return `
       <div class="exercise" data-step="build">
-        ${chip("Satz bauen")}<div class="ex-title">Baue den nepalesischen Satz</div>
-        <div class="build-target">„${esc(step.item.de)}“</div>
+        ${chip(t("chip-build"))}<div class="ex-title">${t("ex-build-title")}</div>
+        <div class="build-target">„${esc(G(step.item))}“</div>
         <div class="build-stage" data-stage></div>
-        <div class="bank">${bank.map((t, i) => `<button class="tile dev" data-bank="${i}" data-token="${esc(t)}">${esc(t)}<span class="tr inline">${esc(trMap[t] || "")}</span></button>`).join("")}</div>
-        <div class="check-row"><button class="btn btn-primary" data-check>Überprüfen</button></div>
+        <div class="bank">${bank.map((tok, i) => `<button class="tile dev" data-bank="${i}" data-token="${esc(tok)}">${esc(tok)}<span class="tr inline">${esc(trMap[tok] || "")}</span></button>`).join("")}</div>
+        <div class="check-row"><button class="btn btn-primary" data-check>${t("check")}</button></div>
       </div>`;
   }
 
@@ -2080,11 +2176,11 @@ function stepHtml(step) {
     const audio = GRAMMAR_AUDIO[step.tip.id];
     return `
       <div class="exercise" data-step="tip">
-        ${chip("Grammatik im Vergleich")}<div class="ex-title">${esc(step.tip.title)}</div>
-        <p class="tip-text">${esc(step.tip.de)}</p>
+        ${chip(t("chip-grammar"))}<div class="ex-title">${esc(TX(step.tip, "title"))}</div>
+        <p class="tip-text">${esc(G(step.tip))}</p>
         <div class="prompt-ne dev" style="font-size:clamp(24px,5vw,34px)">${esc(step.tip.ne)}</div>
         <div class="prompt-tr">${esc(step.tip.tr)}</div>
-        ${audio ? `<div class="audio-stage"><button class="audio-btn" data-audio aria-label="Beispiel anhören">${ICONS.speaker}</button></div>` : ""}
+        ${audio ? `<div class="audio-stage"><button class="audio-btn" data-audio aria-label="${t("aria-example")}">${ICONS.speaker}</button></div>` : ""}
       </div>`;
   }
 
@@ -2092,19 +2188,19 @@ function stepHtml(step) {
     const L = step.letter;
     return `
       <div class="exercise" data-step="letterNew">
-        ${chip("Devanagari · neu")}<div class="ex-title">Buchstabe: „${esc(L.sound)}“</div>
+        ${chip(t("chip-devanagari-new"))}<div class="ex-title">${t("ex-letter-title", { s: esc(L.sound) })}</div>
         <div class="glyph dev">${esc(L.ch)}</div>
-        <div class="audio-stage"><button class="audio-btn" data-audio aria-label="Laut anhören">${ICONS.speaker}</button></div>
-        <p class="note">${esc(L.hint)}${L.word ? ` · steckt in <span class="dev">${esc(L.word)}</span>` : ""}</p>
+        <div class="audio-stage"><button class="audio-btn" data-audio aria-label="${t("aria-sound")}">${ICONS.speaker}</button></div>
+        <p class="note">${esc(TX(L, "hint"))}${L.word ? ` · ${t("letter-in")} <span class="dev">${esc(L.word)}</span>` : ""}</p>
       </div>`;
   }
 
   if (step.type === "letter2sound") {
     return `
       <div class="exercise" data-step="letter2sound">
-        ${chip("Devanagari")}<div class="ex-title">Wie klingt dieses Zeichen?</div>
+        ${chip(t("chip-devanagari"))}<div class="ex-title">${t("ex-letter2sound")}</div>
         <div class="glyph dev">${esc(step.letter.ch)}</div>
-        <div class="audio-stage"><button class="audio-btn" data-audio aria-label="Laut anhören">${ICONS.speaker}</button></div>
+        <div class="audio-stage"><button class="audio-btn" data-audio aria-label="${t("aria-sound")}">${ICONS.speaker}</button></div>
         <div class="options" data-options></div>
       </div>`;
   }
@@ -2112,7 +2208,7 @@ function stepHtml(step) {
   if (step.type === "sound2letter") {
     return `
       <div class="exercise" data-step="sound2letter">
-        ${chip("Devanagari")}<div class="ex-title">Welches Zeichen klingt wie „${esc(step.letter.sound)}“?</div>
+        ${chip(t("chip-devanagari"))}<div class="ex-title">${t("ex-sound2letter", { s: esc(step.letter.sound) })}</div>
         <div class="options glyph-options" data-options></div>
       </div>`;
   }
@@ -2121,14 +2217,14 @@ function stepHtml(step) {
     const d = DETECTIVE.intro;
     return `
       <div class="exercise" data-step="detIntro">
-        ${chip("Höflichkeits-Detektiv")}<div class="ex-title">${esc(d.title)}</div>
-        <p class="tip-text">${esc(d.body)}</p>
+        ${chip(t("card-detective"))}<div class="ex-title">${esc(TX(d, "title"))}</div>
+        <p class="tip-text">${esc(TX(d, "body"))}</p>
         ${d.levels.map((l, i) => `
           <div class="level-row">
-            <button class="audio-btn small" data-audio data-play="${["det_ta", "det_timi", "det_tapaai"][i]}" aria-label="anhören">${ICONS.speaker}</button>
+            <button class="audio-btn small" data-audio data-play="${["det_ta", "det_timi", "det_tapaai"][i]}" aria-label="${t("aria-listen")}">${ICONS.speaker}</button>
             <span class="dev" style="font-size:22px;font-weight:700">${esc(l.ne)}</span>
             <span class="tr inline">${esc(l.tr)}</span>
-            <span class="level-de">${esc(l.de)}</span>
+            <span class="level-de">${esc(G(l))}</span>
           </div>`).join("")}
       </div>`;
   }
@@ -2141,8 +2237,8 @@ function stepHtml(step) {
     ];
     return `
       <div class="exercise" data-step="scenario">
-        ${chip("Höflichkeits-Detektiv")}<div class="ex-title">Wer bekommt welches „du“?</div>
-        <div class="scene">${ICONS.search} ${esc(step.scene.who)}</div>
+        ${chip(t("card-detective"))}<div class="ex-title">${t("ex-scenario-title")}</div>
+        <div class="scene">${ICONS.search} ${esc(TX(step.scene, "who"))}</div>
         <div class="options" data-options></div>
       </div>`;
   }
@@ -2152,29 +2248,29 @@ function stepHtml(step) {
     if (s.type === "narr") return `
       <div class="exercise" data-step="storyNarr">
         ${s.art ? sceneArt(s.art) : ""}
-        ${chip(`Story · ${esc(session.def.title)}`)}<div class="narr">${esc(s.de)}</div>
-        ${s.reveal ? `<div class="reveal-wrap"><button class="reveal-chip" data-reveal>${esc(s.reveal.q)}</button></div>` : ""}
+        ${chip(t("chip-story") + " · " + esc(session.def.title))}<div class="narr">${esc(G(s))}</div>
+        ${s.reveal ? `<div class="reveal-wrap"><button class="reveal-chip" data-reveal>${esc(TX(s.reveal, "q"))}</button></div>` : ""}
       </div>`;
     if (s.type === "line") return `
       <div class="exercise" data-step="storyLine">
-        ${chip(`Story · ${esc(session.def.title)}`)}
-        <div class="speaker">${esc(s.who)}</div>
+        ${chip(t("chip-story") + " · " + esc(session.def.title))}
+        <div class="speaker">${esc(TX(s, "who"))}</div>
         <div class="prompt-ne dev">${esc(s.ne)}</div>
         <div class="prompt-tr">${esc(s.tr)}</div>
-        <div class="prompt-de">= ${esc(s.de)}</div>
-        <div class="audio-stage"><button class="audio-btn" data-audio data-play="${s.audio}" aria-label="Sprich es">${ICONS.speaker}</button></div>
-        ${s.note ? `<p class="note">${neTrText(s.note)}</p>` : ""}
+        <div class="prompt-de">= ${esc(G(s))}</div>
+        <div class="audio-stage"><button class="audio-btn" data-audio data-play="${s.audio}" aria-label="${t("aria-speak")}">${ICONS.speaker}</button></div>
+        ${s.note ? `<p class="note">${neTrText(TX(s, "note"))}</p>` : ""}
       </div>`;
     if (s.type === "choice") return `
       <div class="exercise" data-step="storyChoice">
-        ${chip(`Story · ${esc(session.def.title)}`)}<div class="ex-title">${esc(s.de)}</div>
+        ${chip(t("chip-story") + " · " + esc(session.def.title))}<div class="ex-title">${esc(G(s))}</div>
         <div class="options story-options" data-options></div>
       </div>`;
     if (s.type === "end") return `
       <div class="exercise" data-step="storyEnd">
-        ${chip(`Story · ${esc(session.def.title)}`)}
-        <div class="ex-title">🎉 ${esc(s.de)}</div>
-        <p class="note">${esc(s.bonus)}</p>
+        ${chip(t("chip-story") + " · " + esc(session.def.title))}
+        <div class="ex-title">🎉 ${esc(G(s))}</div>
+        <p class="note">${esc(TX(s, "bonus"))}</p>
       </div>`;
   }
   return "";
@@ -2193,9 +2289,9 @@ function renderStep() {
 
   view.innerHTML = `
     <div class="session-top">
-      <button class="icon-btn" id="exitBtn" title="Lektion verlassen" aria-label="Lektion verlassen">${ICONS.close}</button>
+      <button class="icon-btn" id="exitBtn" title="${t("exit-title")}" aria-label="${t("exit-title")}">${ICONS.close}</button>
       <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
-      <button class="icon-btn" id="soundBtn" title="Ton an/aus" aria-label="Ton an/aus">${state.sound === "on" ? ICONS.speaker : ICONS.muted}</button>
+      <button class="icon-btn" id="soundBtn" title="${t("sound-title")}" aria-label="${t("sound-title")}">${state.sound === "on" ? ICONS.speaker : ICONS.muted}</button>
     </div>
     ${stepHtml(step)}`;
 
@@ -2216,7 +2312,7 @@ function renderStep() {
     box.innerHTML = four.map((o, i) => {
       let label;
       if (step.type === "de2ne") label = `<span class="dev ne">${esc(o.ne)}</span><span class="tr inline">${esc(o.tr)}</span>`;
-      else label = esc(o.de);
+      else label = esc(G(o));
       return `<button class="option" data-id="${o.id}"><span class="key">${i + 1}</span><span>${label}</span></button>`;
     }).join("");
     if (step.type === "audio4") playItem(step.item, $("[data-audio]", ex));
@@ -2254,7 +2350,7 @@ function renderStep() {
       if (!correct) box.querySelector(`[data-key="${step.scene.answer}"]`).classList.add("correct");
       box.querySelectorAll(".option").forEach(o => o.disabled = true);
       answerSimple(correct, `det_${step.scene.answer}`, correct ? 10 : 0,
-        correct ? "Richtig!" : "Nicht ganz",
+        correct ? t("fb-correct") : t("fb-wrong"),
         `${sceneWhy(step.scene)}`);
     });
     showFooterIdle();
@@ -2265,11 +2361,18 @@ function renderStep() {
 
 function sceneWhy(scene) {
   const why = {
-    ta: "तँ ist nur für kleine Kinder und ganz Intimes – für Erwachsene, die du nicht gut kennst, eine Beleidigung.",
-    timi: "तिमी passt unter Gleichaltrige und Freunde – locker, aber nie herablassend.",
-    tapaai: "तपाईं ist der respektvolle Weg – bei Fremden, Älteren und im Laden immer sicher."
+    de: {
+      ta: "तँ ist nur für kleine Kinder und ganz Intimes – für Erwachsene, die du nicht gut kennst, eine Beleidigung.",
+      timi: "तिमी passt unter Gleichaltrige und Freunde – locker, aber nie herablassend.",
+      tapaai: "तपाईं ist der respektvolle Weg – bei Fremden, Älteren und im Laden immer sicher."
+    },
+    en: {
+      ta: "तँ is only for small children and very close family – for adults you don't know well, it's an insult.",
+      timi: "तिमी fits peers and friends – casual, but never demeaning.",
+      tapaai: "तपाईं is the respectful way – always safe with strangers, elders and in shops."
+    }
   };
-  return why[scene.answer];
+  return (why[state.lang] || why.de)[scene.answer];
 }
 
 function distractors(item, pool, n = 3) {
@@ -2336,8 +2439,8 @@ function showFooterContinue(onNext) {
   bar.className = "feedback";
   bar.innerHTML = `
     <div class="feedback-inner">
-      <span class="recap" style="flex:1">Tippen oder Enter zum Fortfahren</span>
-      <button class="btn btn-primary" data-next>Weiter</button>
+      <span class="recap" style="flex:1">${t("fb-tap-continue")}</span>
+      <button class="btn btn-primary" data-next>${t("continue")}</button>
     </div>`;
   document.body.appendChild(bar);
   $("[data-next]", bar).addEventListener("click", onNext);
@@ -2347,12 +2450,12 @@ function showFooterContinue(onNext) {
 function showFeedback(correct, step) {
   let recapHtml = "";
   if (step.item) {
-    recapHtml = `${both(step.item)} &nbsp;=&nbsp; ${esc(step.item.de)}
-      <button class="audio-btn small" data-replay aria-label="Nochmal vorlesen" style="margin-left:8px;vertical-align:middle">${ICONS.speaker}</button>`;
+    recapHtml = `${both(step.item)} &nbsp;=&nbsp; ${esc(G(step.item))}
+      <button class="audio-btn small" data-replay aria-label="${t("aria-replay")}" style="margin-left:8px;vertical-align:middle">${ICONS.speaker}</button>`;
   } else if (step.group) {
-    recapHtml = `<b>${esc(step.group.title)}</b> – alle Paare gefunden`;
+    recapHtml = `<b>${esc(TX(step.group, "title"))}</b> – ${t("fb-all-pairs")}`;
   }
-  showFeedbackRaw(correct, correct ? "Richtig!" : "Nicht ganz", recapHtml, step.item ? step.item.id : null);
+  showFeedbackRaw(correct, correct ? t("fb-correct") : t("fb-wrong"), recapHtml, step.item ? step.item.id : null);
 }
 
 function showFeedbackRaw(correct, verdict, recapHtml, replayId) {
@@ -2363,7 +2466,7 @@ function showFeedbackRaw(correct, verdict, recapHtml, replayId) {
     <div class="feedback-inner">
       <span class="verdict">${verdict}</span>
       <span class="recap">${recapHtml || ""}</span>
-      <button class="btn btn-primary" data-next>Weiter</button>
+      <button class="btn btn-primary" data-next>${t("continue")}</button>
     </div>`;
   document.body.appendChild(bar);
   const replay = replayId ? $("[data-replay]", bar) : null;
@@ -2402,8 +2505,8 @@ function setupLetterQuiz(step, ex) {
     if (!correct) box.querySelector(`[data-id="${L.id}"]`).classList.add("correct");
     box.querySelectorAll(".option").forEach(o => o.disabled = true);
     answerSimple(correct, L.id, correct ? 8 : 0,
-      correct ? "Richtig!" : "Nicht ganz",
-      `„${L.ch}“ klingt wie „${L.sound}“ – ${L.hint}`);
+      correct ? t("fb-correct") : t("fb-wrong"),
+      `${t("fb-letter-sounds", { ch: esc(L.ch), s: esc(L.sound) })} – ${TX(L, "hint")}`);
   });
 }
 
@@ -2418,9 +2521,9 @@ function setupStoryStep(step, ex) {
       if (chip.dataset.claimed) return;
       chip.dataset.claimed = "1";
       chip.classList.add("open");
-      chip.innerHTML = `💡 ${neTrText(s.reveal.a)}`;
+      chip.innerHTML = `💡 ${neTrText(TX(s.reveal, "a"))}`;
       session.xpEarned += 2;
-      addXp(2, "Aufgedeckt");
+      addXp(2, t("xp-revealed"));
       const dd = dailyData(); dd.correct++; saveDaily(dd);
       blip("good");
     });
@@ -2445,11 +2548,11 @@ function setupStoryStep(step, ex) {
       blip(correct ? "good" : "bad");
       buzz(correct ? "good" : "bad");
       if (correct) {
-        session.xpEarned += 10; addXp(10, "Story");
+        session.xpEarned += 10; addXp(10, t("chip-story"));
         const dd = dailyData(); dd.correct++; saveDaily(dd);
       }
-      showFeedbackRaw(correct, correct ? "Genau!" : "Nicht ganz",
-        `${neTrText(o.why || o.de)}${o.de && o.why ? `<br><small>${esc(o.de)}</small>` : ""}`, o.audio);
+      showFeedbackRaw(correct, correct ? t("fb-exact") : t("fb-wrong"),
+        `${neTrText(o.why ? TX(o, "why") : G(o))}${o.de && o.why ? `<br><small>${esc(G(o))}</small>` : ""}`, o.audio);
     });
   } else {
     showFooterContinue(nextStep);
@@ -2483,7 +2586,7 @@ function setupMatch(step, ex) {
           const xp = firstTry ? 10 : 5;
           session.xpEarned += xp; addXp(xp);
           blip("good"); buzz("good");
-          showFeedbackRaw(true, "Richtig!", `<b>${esc(step.group.title)}</b> – alle Paare gefunden`, null);
+          showFeedbackRaw(true, t("fb-correct"), `<b>${esc(TX(step.group, "title"))}</b> – ${t("fb-all-pairs")}`, null);
         }
       } else {
         wrongPairs++;
@@ -2550,11 +2653,11 @@ function confirmExit() {
   overlay.className = "modal-backdrop";
   overlay.innerHTML = `
     <div class="modal" role="dialog" aria-modal="true">
-      <div class="modal-title">Session verlassen?</div>
-      <p>Der Fortschritt dieser Runde geht verloren.</p>
+      <div class="modal-title">${t("exit-title")}</div>
+      <p>${t("exit-body")}</p>
       <div class="modal-actions">
-        <button class="btn btn-ghost" data-stay>Bleiben</button>
-        <button class="btn btn-primary" data-leave>Verlassen</button>
+        <button class="btn btn-ghost" data-stay>${t("exit-stay")}</button>
+        <button class="btn btn-primary" data-leave>${t("exit-leave")}</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
@@ -2573,7 +2676,7 @@ function renderDone() {
   const xpBefore = getXp();
   const stopsDoneBefore = JOURNEY.stops.map(st => stopDone(st, xpBefore)); // Station = Kapitel: Stand VOR dieser Session
 
-  if (bonus) { session.xpEarned += bonus; addXp(bonus, "Session geschafft"); }
+  if (bonus) { session.xpEarned += bonus; addXp(bonus, t("xp-session-done")); }
   completeStreakDay();
   /* Tagesziel: Szene-Aufgabe zählt nur für die NEXTE Szene (Wiederholen gilt nicht),
      fehlt keine neue Szene mehr, ist die Aufgabe automatisch erfüllt */
@@ -2582,13 +2685,13 @@ function renderDone() {
   dd.sessions++;
   if ((def.type === "scene" || def.type === "story") && (!nxScene || nxScene.scene.id === def.id)) {
     dd.scene = true;
-    if (!dd.sceneTitle) dd.sceneTitle = (def.scene && def.scene.title) || def.title || ""; // Titel der SZENE, die den Haken verdient hat
+    if (!dd.sceneId && def.scene) dd.sceneId = def.scene.id; // Sprache neutral: ID statt Titel (heutige Karte loest beim Render auf)
   }
   if (def.type === "refresh") dd.review = true;
   let goalNow = false;
   if (!dd.goalBonus && (dd.scene || !nxScene) && dd.review) { dd.goalBonus = true; goalNow = true; }
   saveDaily(dd);
-  if (goalNow) { session.xpEarned += 15; addXp(15, "Tagesziel komplett"); }
+  if (goalNow) { session.xpEarned += 15; addXp(15, t("today-goal-done")); }
   store.set("sikai_done_" + def.id, store.get("sikai_done_" + def.id, 0) + 1);
   if (def.type === "group") {
     bumpGroup(def.group.id);
@@ -2604,19 +2707,19 @@ function renderDone() {
   const nextStop = JOURNEY.stops.find((s, i) => !stopsDoneBefore[i] && stopDone(s, getXp()));
   view.innerHTML = `
     <div class="done-hero">
-      <div class="big">${ICONS.mountain_snow} Geschafft!</div>
+      <div class="big">${ICONS.mountain_snow} ${t("done-big")}</div>
       <div class="dev-big">बधाई छ! <span class="tr">(badhaai chha)</span></div>
     </div>
     <div class="stats">
-      <div class="stat"><b>+${session.xpEarned}</b><span>XP gesammelt</span></div>
-      <div class="stat"><b>${session.firstTry}/${session.answered}</b><span>beim 1. Versuch</span></div>
-      <div class="stat"><b>${streakData().count}</b><span>Tage Streak</span></div>
+      <div class="stat"><b>+${session.xpEarned}</b><span>${t("done-xp")}</span></div>
+      <div class="stat"><b>${session.firstTry}/${session.answered}</b><span>${t("done-first-try")}</span></div>
+      <div class="stat"><b>${streakData().count}</b><span>${streakData().count === 1 ? t("unit-day") : t("unit-days")} ${t("streak")}</span></div>
     </div>
-    ${nextStop ? `<div class="arrive-card">🧭 Neue Station erreicht: <b>${esc(nextStop.name)}</b> – ${esc(nextStop.sub)}!</div>` : ""}
-    ${goalNow ? `<div class="arrive-card">🔥 Tagesziel komplett – +15 XP Bonus kassiert!</div>` : ""}
+    ${nextStop ? `<div class="arrive-card">🧭 ${t("done-arrive", { stop: esc(nextStop.name), sub: esc(TX(nextStop, "sub")) })}</div>` : ""}
+    ${goalNow ? `<div class="arrive-card">🔥 ${t("done-goal")}</div>` : ""}
     <div class="done-actions">
-      <button class="btn btn-ghost" id="againBtn">Nochmal</button>
-      <button class="btn btn-primary" id="homeBtn">Zur Reise</button>
+      <button class="btn btn-ghost" id="againBtn">${t("done-again")}</button>
+      <button class="btn btn-primary" id="homeBtn">${t("done-home")}</button>
     </div>`;
   $("#againBtn").addEventListener("click", () => startSessionById(def.id));
   $("#homeBtn").addEventListener("click", renderHome);
@@ -2646,7 +2749,9 @@ applyTheme(state.theme);
 applyScript(state.script);
 bindHeader();
 $("#themeBtn").innerHTML = state.theme === "dark" ? ICONS.sun : ICONS.moon;
+refreshStaticChrome();
 renderHome();
+maybeShowLangPicker();
 
 initPwa();
 
@@ -2715,6 +2820,11 @@ initPwa();
     (async () => {
       const log = [];
       let pass = true;
+      state.lang = "de"; store.set("sikai_lang", "de"); // Selbsttest-Checks pruefen deutsche Texte
+      /* Deterministischer Start: alter Spielstand (z.B. vom manuellen Testen) wuerde die
+         reset-*-Checks falsch brechen lassen - alles auf Null, Spracheinstellung behalten */
+      Object.keys(localStorage).filter(k => k.indexOf("sikai_") === 0 && k !== "sikai_lang").forEach(k => localStorage.removeItem(k));
+      renderHome();
       const check = (name, ok, detail = "") => {
         log.push(name + ": " + (ok ? "ok" : "FEHLER" + (detail ? " " + detail : "")));
         if (!ok) pass = false;
@@ -2869,7 +2979,8 @@ initPwa();
         check("tabbar-da", document.querySelectorAll("#tabbar button").length === 3);
         state.tab = "start"; renderHome();
         check("start-zeigt-karte-und-stationen-vorab", !!document.querySelector(".map-hero"));
-        check("reset-keine-station-erreicht", document.querySelectorAll(".stop.done").length === 0);
+        check("reset-keine-station-erreicht", document.querySelectorAll(".stop.done").length === 0,
+          "done-Flags: " + JSON.stringify(Object.keys(localStorage).filter(k => /^sikai_done_/.test(k))));
         check("reset-genau-eine-aktiv", document.querySelectorAll(".stop.next").length === 1);
         check("reset-genau-ein-du-bist-hier", document.querySelectorAll(".pulse-ring").length === 1);
         check("reset-thamel-gesperrt", (function () {
@@ -2994,11 +3105,13 @@ initPwa();
         check("heute-karte-1-haken", document.querySelectorAll("#todayCard .tc-task.done").length === 1);
         check("heute-bonus-noch-offen", dailyData().goalBonus !== true);
         // Weitere neue Szenen am selben Tag überschreiben den Titel NICHT
-        const titelErste = dailyData().sceneTitle;
+        const titelErste = dailyData().sceneId;
         startSessionById("c1s2");
         await fastFinish();
-        check("heute-titel-bleibt-erste", dailyData().sceneTitle === titelErste,
-          JSON.stringify(dailyData().sceneTitle) + " vs " + JSON.stringify(titelErste));
+        check("heute-titel-bleibt-erste", dailyData().sceneId === titelErste,
+          JSON.stringify(dailyData().sceneId) + " vs " + JSON.stringify(titelErste));
+        check("heute-titel-aufloesbar", !dailyData().sceneId || dailySceneTitle(dailyData()) === "Landung",
+          dailySceneTitle(dailyData()));
         state.tab = "start"; renderHome();
         let goalAwards = 0;
         const origAddXp = window.addXp;
@@ -3041,6 +3154,28 @@ initPwa();
           if (fills[0]) check("stationen-balken-kapitelbasiert", fills[0].style.width === expect,
             fills[0].style.width + " statt " + expect);
           check("stationen-ohne-alt-xp-text", !/noch -?\d+ XP/.test(document.body.textContent));
+        }
+
+        // 4d) Sprache DE<->EN: komplette Umstellung, Fortschritt bleibt, kein Deutsch in EN
+        {
+          const xpVor = getXp();
+          const doneVor = Object.keys(localStorage).filter(k => /^sikai_done_/.test(k)).length;
+          const srsVor = JSON.stringify(srsAll());
+          applyLang("en");
+          check("lang-en-gesetzt", state.lang === "en" && store.get("sikai_lang", null) === "en");
+          check("lang-en-tabbar", [...document.querySelectorAll("#tabbar span")].some(x => x.textContent === "Home"));
+          check("lang-en-fortschritt-xp", getXp() === xpVor, getXp() + " statt " + xpVor);
+          check("lang-en-fortschritt-done", Object.keys(localStorage).filter(k => /^sikai_done_/.test(k)).length === doneVor);
+          check("lang-en-fortschritt-srs", JSON.stringify(srsAll()) === srsVor);
+          const germanWords = /(Kapitel\s\d|Szene\s\d|Wiederholung|Tagesziel|Einstellungen|Stationen 1|Wörter fällig|geschafft!|Zur Reise|Reise-Pass|Vokabeltrainer|gemeistert – wiederholbar|Teil der Geschichte)/;
+          const tabs = ["start", "ueben", "einstellungen"];
+          const treffer = [];
+          for (const tb of tabs) { state.tab = tb; renderHome(); if (germanWords.test(document.getElementById("view").textContent)) treffer.push(tb); }
+          check("lang-en-kein-deutsch-uebrig", treffer.length === 0, treffer.join(","));
+          applyLang("de");
+          check("lang-zurueck-de", state.lang === "de" && store.get("sikai_lang", null) === "de");
+          check("lang-zurueck-fortschritt", getXp() === xpVor);
+          state.tab = "start"; renderHome();
         }
 
         // 5) Einstellungen: Tab-Seite, Schalter, Reset (2-Klick, echt)

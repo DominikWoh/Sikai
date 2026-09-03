@@ -22,7 +22,7 @@
     document.documentElement.dataset.theme = t;
   } catch (e) { document.documentElement.dataset.theme = "light"; }
 </script>
-<link rel="stylesheet" href="styles.css?v=24">
+<link rel="stylesheet" href="styles.css?v=25">
 </head>
 <body class="script-both">
   <header class="app-header">
@@ -36,8 +36,8 @@
       <button class="icon-btn" id="themeBtn" title="Hell/Dunkel umschalten" aria-label="Farbschema umschalten"></button>
       <nav class="script-toggle" id="scriptToggle" aria-label="Schrift-Anzeige">
         <button data-script="dev">देवनागरी</button>
-        <button data-script="both" class="active">Beide</button>
-        <button data-script="tr">Umschrift</button>
+        <button data-script="both" class="active" data-i18n="set-script-both">Beide</button>
+        <button data-script="tr" data-i18n="set-script-tr">Umschrift</button>
       </nav>
     </div>
   </header>
@@ -48,8 +48,9 @@
 
   <audio id="player" preload="auto"></audio>
 
-  <script src="data/lesson1.js?v=24"></script>
-  <script src="data/journey.js?v=24"></script>
-  <script src="app.js?v=24"></script>
+  <script src="data/i18n.js?v=25"></script>
+  <script src="data/lesson1.js?v=25"></script>
+  <script src="data/journey.js?v=25"></script>
+  <script src="app.js?v=25"></script>
 </body>
 </html>

@@ -660,6 +660,12 @@ svg[viewBox="0 0 24 24"][stroke] { width: 1.1em; height: 1.1em; vertical-align: 
 
 .modal-actions { display: flex; gap: 10px; justify-content: center; }
 
+/* Erststart: Sprachwahl */
+.lang-picker .lp-title { font-family: var(--serif); font-size: 22px; font-weight: 600; }
+.lang-picker .lp-sub { color: var(--ink-soft); font-size: 14px; margin: 10px 0 22px; }
+.lang-picker .lp-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.lang-picker .lp-row .btn { min-width: 130px; }
+
 /* ---------- Schrift-Umschaltung ---------- */
 
 /* .ne = Devanagari, .tr = Umschrift */
