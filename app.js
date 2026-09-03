@@ -1,7 +1,7 @@
 /* Sikai – Lern-Engine v2 (Gamification: Reise, XP, Streak, SRS, Story) */
 "use strict";
 
-const APP_VERSION = "23";
+const APP_VERSION = "24";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const view = $("#view");
@@ -705,10 +705,8 @@ function trailHtml() {
   return JOURNEY.stops.map((s, i) => {
     const done = stopDone(s, xp);
     const next = !done && (i === 0 || stopDone(JOURNEY.stops[i - 1], xp));
-    const cp = (function () { const ch = chapterList()[CHAPTER_FOR[s.id]]; return ch ? chapterProgress(ch) : { done: 0, total: 1 }; })();
-    const prog = next
-      ? (s.xp > 0 ? Math.round((xp / s.xp) * 100) : Math.round(cp.done / cp.total * 100))
-      : 0;
+    const cp = stopChapterProgress(s);
+    const prog = next ? Math.round(cp.done / cp.total * 100) : 0; // Balken = Kapitel-Szenen, nie Alt-XP
     return `
       <div class="stop ${done ? "done" : ""} ${next ? "next" : ""} ${!done && !next ? "locked" : ""}">
         <div class="stop-dot">${done ? ICONS.check : (i + 1)}</div>
@@ -1230,7 +1228,8 @@ function mapHtml() {
   const stops = JOURNEY.stops;
   const land = landPath(MAP_LAND);
   const route = routePath(MAP_ROUTE.map(p => typeof p === "string" ? MAP_STOPS[p] : p));
-  const progress = Math.min(100, Math.round(xp / 10)); // 1000 XP = komplette Route
+  const jp = journeySceneProgress();
+  const progress = Math.min(100, Math.round(jp.done / jp.total * 100)); // Route = gemeisterte Szenen
 
   /* Bergketten: Annapurna-Gruppe über Pokhara + Hauptkamm mit Everest */
   const peaks = [
@@ -1256,7 +1255,8 @@ function mapHtml() {
     const [x, y] = MAP_STOPS[st.id];
     const done = stopDone(st, xp);
     const next = !done && (i === 0 || stopDone(stops[i - 1], xp));
-    const tip = `${i + 1} · ${st.name} · ${st.sub}${done ? " · erreicht" : " · " + st.xp + " XP"}`;
+    const cp = stopChapterProgress(st);
+    const tip = `${i + 1} · ${st.name} · ${st.sub}${done ? " · erreicht" : " · Kapitel " + (CHAPTER_FOR[st.id] + 1) + " · Szene " + Math.min(cp.done + 1, cp.total) + "/" + cp.total}`;
     return `
       ${next ? `<circle cx="${x}" cy="${y}" r="17" class="pulse-ring"/>` : ""}
       <ellipse cx="${x}" cy="${y + 10}" rx="5.5" ry="1.7" class="pin-shadow"/>
@@ -1574,6 +1574,15 @@ function chapterProgress(ch) {
   return { done, total: ch.scenes.length, complete: done === ch.scenes.length };
 }
 const CHAPTER_FOR = { kathmandu: 0, thamel: 1, swayambhu: 2, bhaktapur: 3, nagarkot: 4, pokhara: 5, lumbini: 6, chitwan: 7, everest: 8 };
+function stopChapterProgress(st) {
+  const ch = chapterList()[CHAPTER_FOR[st.id]];
+  return ch ? chapterProgress(ch) : { done: 0, total: 1, complete: false };
+}
+function journeySceneProgress() {
+  const all = chapterList().flatMap(c => c.scenes);
+  const done = all.filter(sc => store.get("sikai_done_" + sc.id, 0) > 0).length;
+  return { done, total: all.length };
+}
 function stopDone(st, xp) {
   const ch = chapterList()[CHAPTER_FOR[st.id]];
   if (ch) return chapterProgress(ch).complete; // Station = Kapitel gemeistert, Punkt.
@@ -1659,7 +1668,7 @@ function sessionCardsHtml() {
     const stop = g.unlock ? JOURNEY.stops.find(x => x.id === g.unlock) : null;
     cards.push({ id: g.id, cls: "group", icon: ICONS[G_ICONS[g.id]] || ICONS.sparkles, title: g.title,
       sub: locked
-        ? "Erreiche " + stop.name + " · noch " + (stop.xp - getXp()) + " XP"
+        ? "Erst Kapitel " + (CHAPTER_FOR[stop.id] + 1) + " meistern – dann " + stop.name
         : g.items.length + " Ausdrücke" + (doneN ? " · " + doneN + "× gemeistert" : ""),
       locked });
   });
@@ -1767,7 +1776,6 @@ function renderHome() {
   const rec = recommendedSession();
   const xp = getXp();
   const streakN = streakData().count;
-  const nextStop = JOURNEY.stops.find(s => xp < s.xp) || JOURNEY.stops[JOURNEY.stops.length - 1];
 
   if (state.tab === "einstellungen") {
     view.innerHTML = `<div class="settings-sheet settings-page">${settingsHtml()}</div>`;
@@ -2563,6 +2571,7 @@ function renderDone() {
   const acc = session.answered ? Math.round(session.firstTry / session.answered * 100) : 100;
   const bonus = def.xpBonus || 20;
   const xpBefore = getXp();
+  const stopsDoneBefore = JOURNEY.stops.map(st => stopDone(st, xpBefore)); // Station = Kapitel: Stand VOR dieser Session
 
   if (bonus) { session.xpEarned += bonus; addXp(bonus, "Session geschafft"); }
   completeStreakDay();
@@ -2591,7 +2600,8 @@ function renderDone() {
   if (def.type === "refresh") srsSeed(srsDueIds()); // nicht fällige bleiben, neue fällige neu gesetzt
   if (def.type === "scene") srsSeed((def.scene.items || []).concat(def.scene.warmups || []));
 
-  const nextStop = JOURNEY.stops.find(s => xpBefore < s.xp && getXp() >= s.xp);
+  /* Neue Station = Kapitel wurde gerade komplett gemeistert (nicht: XP-Schwelle gekreuzt) */
+  const nextStop = JOURNEY.stops.find((s, i) => !stopsDoneBefore[i] && stopDone(s, getXp()));
   view.innerHTML = `
     <div class="done-hero">
       <div class="big">${ICONS.mountain_snow} Geschafft!</div>
@@ -3016,6 +3026,22 @@ initPwa();
         renderHome();
         check("heute-alle-szenen-auto-done", document.querySelector('[data-goal="scene"]').classList.contains("done"));
         check("heute-alle-meister-text", ((document.querySelector('[data-goal="scene"] small') || {}).textContent || "").indexOf("Alle Kapitel") === 0);
+
+        // 4c) Stationen-Balken folgt dem Kapitel (Alt-XP-Schwellen dürfen ihn nicht füllen)
+        {
+          localStorage.setItem("sikai_xp", JSON.stringify(500)); // weit über Thamels altem 30-XP-Schwellwert
+          Object.keys(localStorage).filter(k => /^sikai_done_/.test(k)).forEach(k => localStorage.removeItem(k));
+          const ch2 = chapterList()[1];
+          chapterList()[0].scenes.forEach(sc => store.set("sikai_done_" + sc.id, 1)); // Kapitel 1 komplett
+          store.set("sikai_done_" + ch2.scenes[0].id, 1); // Kapitel 2: erste Szene gemeistert
+          state.tab = "start"; renderHome();
+          const fills = [...document.querySelectorAll(".trail .stop.next .progress-fill")];
+          check("stationen-balken-nur-naechste", fills.length === 1, fills.length + " Balken");
+          const expect = Math.round(1 / ch2.scenes.length * 100) + "%";
+          if (fills[0]) check("stationen-balken-kapitelbasiert", fills[0].style.width === expect,
+            fills[0].style.width + " statt " + expect);
+          check("stationen-ohne-alt-xp-text", !/noch -?\d+ XP/.test(document.body.textContent));
+        }
 
         // 5) Einstellungen: Tab-Seite, Schalter, Reset (2-Klick, echt)
         state.tab = "einstellungen"; renderHome();
