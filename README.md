@@ -13,7 +13,7 @@
 [![PWA](https://img.shields.io/badge/PWA-installierbar%20%C2%B7%20offline--first-BC5B3D?style=flat-square)](https://dominikwoh.github.io/Sikai/)
 [![Vanilla JS](https://img.shields.io/badge/Vanilla%20JS-0%20Dependencies-1F1E1B?style=flat-square)](#technik-kurzfassung)
 [![Inhalt](https://img.shields.io/badge/9%20Kapitel%20%C2%B7%208%20Themen-320%20Vokabeln%20%C2%B7%20341%20Audios-3F5A34?style=flat-square)](#struktur)
-[![Selbsttest](https://img.shields.io/badge/Selbsttest-125%20Checks-6F9455?style=flat-square)](#technik-kurzfassung)
+[![Selbsttest](https://img.shields.io/badge/Selbsttest-132%20Checks-6F9455?style=flat-square)](#technik-kurzfassung)
 
 <img src="docs/map.png" width="640" alt="Illustrierte Nepal-Karte mit der Lernreise: 9 Stationen von Kathmandu zum Everest Base Camp, Route mit Fortschritt">
 
@@ -56,7 +56,7 @@ python -m http.server 8765
 
 ## Technik (Kurzfassung)
 
-- Vanille HTML/CSS/JS, keine Abhängigkeiten, keine externen Anfragen (Fonts lokal eingebettet). Regulärer Selbsttest mit 125 Checks (`?demo=selftest`).
+- Vanille HTML/CSS/JS, keine Abhängigkeiten, keine externen Anfragen (Fonts lokal eingebettet). Regulärer Selbsttest mit 132 Checks (`?demo=selftest`).
 - `sw.js` (Service Worker) precacht alle ~390 Dateien inkl. der 341 Audio-Dateien; er wird per Skript aus dem Dateibaum generiert und trägt einen Inhalts-Hash als Build-Kennung. Bei Inhaltsänderungen wird er neu generiert — installierte Apps laden die neue Version dann automatisch nach (Update-Banner).
 - Manifest + Icons für Android/iOS; relative Pfade, damit alles auch unter einem GitHub-Pages-Unterpfad läuft.
 

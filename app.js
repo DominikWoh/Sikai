@@ -1,7 +1,7 @@
 /* Sikai – Lern-Engine v2 (Gamification: Reise, XP, Streak, SRS, Story) */
 "use strict";
 
-const APP_VERSION = "27";
+const APP_VERSION = "28";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const view = $("#view");
@@ -1661,6 +1661,7 @@ function unlockedItems() {
     .flatMap(c => c.scenes)
     .filter(sc => store.get("sikai_done_" + sc.id, 0) > 0)
     .flatMap(sc => (sc.items || []).concat(sc.warmups || []))
+    .map(itemById) // Szenen-Items sind IDs (Strings) -> Objekte aufloesen, sonst fehlen Kapitel-Woerter im Trainer
     .filter(it => it && !have.has(it.id) && have.add(it.id));
   return base.concat(sceneItems);
 }
@@ -3153,11 +3154,14 @@ initPwa();
         renderHome();
         startSessionById("refresh");
         const trainerIds2 = session.queue.filter(st => st.item).map(st => st.item.id);
-        check("trainer-nur-frei-bei-200", trainerIds2.length > 0 &&
-          trainerIds2.every(id => {
-            const g = LESSONS[0].groups.find(gr => gr.items.some(it => it.id === id));
-            return !g || !groupLocked(g);
-          }), trainerIds2.slice(0, 3).join(","));
+        const erlaubt200 = new Set(unlockedItems().map(i => i.id));
+        check("trainer-nur-frei-bei-200", trainerIds2.length > 0 && trainerIds2.every(id => erlaubt200.has(id)),
+          trainerIds2.slice(0, 3).join(","));
+        check("unlocked-enthaltet-szenenwoerter", erlaubt200.has("l9_01") && erlaubt200.has("l2_01"));
+        localStorage.setItem("sikai_srs", JSON.stringify({ l9_01: { s: 1, due: Date.now() - 1000 } }));
+        renderHome();
+        startSessionById("refresh");
+        check("trainer-nimmt-kapitelwort-auf", session.queue.some(st => st.item && st.item.id === "l9_01"));
 
         // === PHASE E2: Themen-Tab & Story-Gate (frei ab 16 von 31 Szenen) ===
         localStorage.removeItem("sikai_themen_unlocked");
@@ -3187,6 +3191,13 @@ initPwa();
         check("themen-cta-da", !!document.querySelector("#themenCta") && document.querySelector("#themenCta").textContent.length > 5,
           (document.querySelector("#themenCta") || {}).textContent || "");
         check("themen-next-markiert", document.querySelectorAll(".themen-item.themen-next").length === 1);
+
+        // === PHASE E3: SEO-Head (Beschreibung, Canonical, OG, JSON-LD, Noscript) ===
+        check("seo-meta-description", !!((document.querySelector('meta[name="description"]') || {}).content || ""));
+        check("seo-canonical", ((document.querySelector('link[rel="canonical"]') || {}).href || "") === "https://dominikwoh.github.io/Sikai/");
+        check("seo-og-bild", ((document.querySelector('meta[property="og:image"]') || {}).content || "").indexOf("og-1200x630") > -1);
+        check("seo-jsonld-ok", (() => { try { return !!JSON.parse(document.querySelector('script[type="application/ld+json"]').textContent).name; } catch (e) { return false; } })());
+        check("seo-noscript-text", (document.querySelector("noscript") || { textContent: "" }).textContent.indexOf("Nepali") > -1);
 
         // === PHASE F: Tagesziel – Heute-Karte (1 Szene + 1 Wiederholung) ===
         const fastFinish = async () => {
