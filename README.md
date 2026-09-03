@@ -1,5 +1,7 @@
 <div align="center">
 
+**Deutsch** · [English](README.en.md)
+
 # Sikai · सिकाइ
 
 **Nepali lernen — als Reise von Kathmandu zum Everest Base Camp.**
